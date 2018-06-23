@@ -1,12 +1,26 @@
 # Simpleblog
 
-This is a simple static http server, made to serve simple text based content. I wrote this to create a simple blog system that I can easily drop posts in to.
+This is a simple web application that translates folders with markdown files in them into a very basic navigatable site. This was desgined to make adding content easy and efficent, without having to dell with any html.
+
+## Setup
+
+First, download simpleblog using the `go get` command:
+
+
+`go get github.com/majiru/simpleblog`
 
 ## Usage
+Navigate to a directory you want to use for website and run `simpleblog init` to create the basic directories.
 
-Simply drop markdown files into the html or blog folder as (title).html, each folder will also need a index.html home page.
-Simpleblog will parse these files once on boot and then serve them statically to the user, this means the web server does not have to pass through golang if desired and the static output could be copied elsewhere.
+From there you can create markdown html files and directiores in the ./source directory
 
+After creating your content, simply run `simpleblog build` to have simpleblog build the output files into ./build
+
+
+From there you can run `simpleblog run` to serve the content on the localport 8080, `run` will also update the content before starting the web server
+
+
+There is an example directory included in this repo under ./example/, with sample source and build directories
 ## Reasoning
 
 I dislike over the top JS and prefer something a bit simpler with the web pages, this allows me to write simple text based pages without having to copy the header in to each file.
