@@ -4,7 +4,9 @@ import (
 	"errors"
 	"gopkg.in/russross/blackfriday.v2"
 	"io/ioutil"
+	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -19,9 +21,32 @@ type page struct {
 	Body       string
 }
 
+type pageDir string
+
+func (pd pageDir) Open(name string) (http.File, error) {
+	dir := string(pd)
+	if dir == "" {
+		dir = "."
+	}
+	fullName := filepath.Join(dir, filepath.FromSlash(path.Clean("/"+name)))
+	dir, shortName := filepath.Split(fullName)
+	p, _ := newPage(shortName, fullName)
+	if p.needsUpdate() {
+		updatePath(dir)
+	}
+	f, err := os.Open(buildDir + fullName)
+	if err != nil {
+		return nil, errors.New("pageDir Open: Can not open file at " + name)
+	}
+	return f, nil
+}
+
 func (p *page) cleanTitle() {
 	p.Title = strings.Replace(p.Title, "_", " ", -1)
 	p.Title = strings.Title(strings.Split(p.Title, ".html")[0])
+	if p.Title == "Index" {
+		p.Title = "Home"
+	}
 }
 
 func (p page) GetHeader() map[string][]page {
@@ -40,6 +65,34 @@ func (p page) GetHeader() map[string][]page {
 		}
 	}
 	return output
+}
+
+func (p page) needsUpdate() bool {
+	sourceFile, err := os.Stat(sourceDir + p.Outputfile)
+	if err != nil {
+		return false
+	}
+
+	destinationFile, err := os.Stat(buildDir + p.Outputfile)
+	if err != nil {
+		return true
+	}
+
+	dir, _ := filepath.Split(p.Outputfile)
+	dirs, _ := ioutil.ReadDir(buildDir + dir)
+
+	for _, f := range dirs {
+		if !f.IsDir() {
+			if f.ModTime().Before(sourceFile.ModTime()) {
+				return true
+			}
+		}
+	}
+
+	if destinationFile.ModTime().Before(sourceFile.ModTime()) {
+		return true
+	}
+	return false
 }
 
 func (p page) write() {
@@ -107,6 +160,7 @@ func newPage(args ...string) (page, error) {
 const basicPage = `<!DOCTYPE html>
 <html>
     <head>
+	<meta charset="utf-8">
         <link rel="stylesheet" href="/index.css">
         <title>{{.Title}}</title>
         <div class="main">

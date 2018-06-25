@@ -1,6 +1,7 @@
 package simpleblog
 
 import (
+	"log"
 	"net/http"
 	"os"
 )
@@ -18,6 +19,6 @@ func Setup() {
 
 /*Serve creates a http server serving the content*/
 func Serve() {
-	http.Handle("/", http.FileServer(http.Dir(buildDir+"/")))
-	http.ListenAndServe(":8080", nil)
+	http.Handle("/", http.FileServer(pageDir("/")))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
