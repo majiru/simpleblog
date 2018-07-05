@@ -23,9 +23,9 @@ First, download simpleblog using the `go get` command:
 Navigate to a directory you want to use for website and run `simpleblog init` to create the basic directories.
 
 This will create a directory structure like this:
-    * domains
-        * root
-            * source
+* domains
+    * root
+      * source
 
 Create or copy markdown files into the source directory with their build names( index.html, about_thing.html )
 
@@ -36,16 +36,16 @@ From there you can run `simpleblog run` to serve the content over http on port 8
 There is an example directory containing source and build directories with this repo.
 
 ## Subdomains
-If you would like to create other sub domains, create other directories in the domains directory, for example a folder blog would corelate to blog.example.com. Markdown files should be placed in a similar fashion to the root domain. Note that multiple domains requires the use of f
+If you would like to create other sub domains, create other directories in the domains directory, for example a folder blog would corelate to blog.example.com. Markdown files should be placed in a similar fashion to the root domain. Note that multiple domains requires the use of FastCGI
 
 An example of a directory tree with a blog subdmoain with some content might look like this:
-    *domains
-        *root
-            *source
-                *index.html
-        *blog
-            *source
-                *index.html
+* domains
+  * root
+    * source
+      * index.html
+  * blog
+    * source
+      * index.html
 
 Build files are stored inside of a build folder under each subdomain folder.
 
