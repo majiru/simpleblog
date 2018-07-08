@@ -202,30 +202,42 @@ func newBfsFromDir(path string) (bfs map[string]blogfs) {
 	return
 }
 
-const basicPage = `<!DOCTYPE html>
+const basicPage = `
+<!DOCTYPE html>
 <html>
     <head>
 	<meta charset="utf-8">
-        <link rel="stylesheet" href="/index.css">
-        <title>{{.Title}}</title>
-        <div class="main">
-            <h1>{{.Title}}</h1>
-        </div>
+	<link rel="stylesheet" href="/index.css">
+	<title>{{.Title}}</title>
     </head>
-    <body>
-    <div class="sidebar">
-    {{range $key, $element := .Sidebar}}
-	<h5><a href="{{$key}}">{{$key}}</a></h5>
-	<ul>
-	{{range $element}}
-	    <li><a href="{{.Path}}">{{.Title}}</a></li>
-	{{end}}
-	</ul>
-    {{end}}
-    </div>
-        <div id="main" class="main">
-            {{.Body}}
-        </div>
+    <body class="vanilla-bean">
+	<div class="blocks">
+	    <div class="block b25 bh20 oblique ">
+		<ul class="mushroom simple-nav ">
+		    {{range $key, $element := .Sidebar}}
+		    <div class="border-solid-thick">
+			<h5><a href="{{$key}}">{{$key}}</a></h5>
+			<ul>
+			{{range $element}}
+			    <li><a href="{{.Path}}">{{.Title}}</a></li>
+			{{end}}
+                        </ul>
+		    </div>
+                    {{end}}
+		</ul>
+	    </div>
+	    <div class="block b75 bh100 justify">
+		<div class="blocks">
+		    <div class="silver block b100 bh10">
+			<h1>{{.Title}}</h1>
+			<hr class="jagged-rule-dark">
+		    </div>
+		    <div class="border-solid-thin block b100 bh90 flow-text">
+			{{.Body}}
+		    </div>
+		</div>
+	    </div>
+	</div>
     </body>
 </html>
 `
