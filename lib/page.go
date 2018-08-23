@@ -31,7 +31,7 @@ type blogfs struct {
 func (bfs blogfs) Open(name string) (http.File, error) {
 	fullName := filepath.Join("/", filepath.FromSlash(path.Clean("/"+name)))
 
-	if strings.HasSuffix(fullName, ".html") || strings.HasSuffix(fullName, "/") {
+	if isWebPage(fullName) {
 		dir, shortName := filepath.Split(fullName)
 		p, _ := newPage(shortName, fullName)
 		if bfs.needsUpdate(p) {
@@ -104,6 +104,9 @@ func (bfs *blogfs) openDir(path string, readBody bool) (pages, dirpages []page) 
 		log.Fatal("openDir: " + err.Error())
 	}
 	for _, f := range files {
+		if !isWebPage(f) {
+			continue
+		}
 		p, _ := newPage(f, path+f)
 		if readBody {
 			content, err := ioutil.ReadFile(bfs.sourceDir + path + f)
@@ -172,6 +175,10 @@ func readDir(inputDir string) (files, dirs []string, outErr error) {
 		}
 	}
 	return
+}
+
+func isWebPage(path string) bool {
+	return strings.HasSuffix(path, ".html") || strings.HasSuffix(path, "/")
 }
 
 func newPage(args ...string) (p *page, err error) {
