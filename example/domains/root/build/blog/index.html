@@ -1,40 +1,47 @@
+
 <!DOCTYPE html>
 <html>
     <head>
 	<meta charset="utf-8">
-        <link rel="stylesheet" href="/index.css">
-        <title>Home</title>
-        <div class="main">
-            <h1>Home</h1>
-        </div>
+	<link rel="stylesheet" href="https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"/>
+	<title>Home</title>
     </head>
-    <body>
-    <div class="sidebar">
-    
-	<h5><a href="/">/</a></h5>
-	<ul>
-	
-	    <li><a href="/index.html">Home</a></li>
-	
-	    <li><a href="/blog/">Blog/</a></li>
-	
-	</ul>
-    
-	<h5><a href="/blog/">/blog/</a></h5>
-	<ul>
-	
-	    <li><a href="/blog/index.html">Home</a></li>
-	
-	    <li><a href="/blog/travel/">Travel/</a></li>
-	
-	</ul>
-    
-    </div>
-        <div id="main" class="main">
-            <h1>This is a test blog</h1>
+    <body class="bg-washed-yellow pa4">
+	<div class="flex justify-around">
+	    <div class="w-30 mw5 bg-washed-green bw2 ba br1 pl2 pr4 h-25">
+		<ul class="list">
+		    
+		    <div class="measure">
+			<h3><a href="/">/</a></h3>
+			<ul>
+			
+			    <li class="br1"><a href="/index.html">Home</a></li>
+			
+			    <li class="br1"><a href="/blog/">Blog/</a></li>
+			
+			</ul>
+		    </div>
+		    
+		    <div class="measure">
+			<h3><a href="/blog/">/blog/</a></h3>
+			<ul>
+			
+			    <li class="br1"><a href="/blog/index.html">Home</a></li>
+			
+			    <li class="br1"><a href="/blog/travel/">Travel/</a></li>
+			
+			</ul>
+		    </div>
+		    
+		</ul>
+	    </div>
+	    <div class="w-70 ba bw2 ma3 pl3 bg-washed-green">
+		<h3 class="f1 measure">Home</h3>
+		<h1>This is a test blog</h1>
 
 <p>Lorem ipsum</p>
 
-        </div>
+	    </div>
+	</div>
     </body>
 </html>

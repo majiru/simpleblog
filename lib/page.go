@@ -30,16 +30,29 @@ type blogfs struct {
 
 func (bfs blogfs) Open(name string) (http.File, error) {
 	fullName := filepath.Join("/", filepath.FromSlash(path.Clean("/"+name)))
-	dir, shortName := filepath.Split(fullName)
-	p, _ := newPage(shortName, fullName)
-	if bfs.needsUpdate(p) {
-		bfs.updateStatic(dir)
+
+	if strings.HasSuffix(fullName, ".html") || strings.HasSuffix(fullName, "/") {
+		dir, shortName := filepath.Split(fullName)
+		p, _ := newPage(shortName, fullName)
+		if bfs.needsUpdate(p) {
+			bfs.updateStatic(dir)
+		}
+		f, err := os.Open(bfs.buildDir + fullName)
+
+		if err != nil {
+			return nil, errors.New("pageDir Open: Can not open built html at " + name)
+		}
+
+		return f, nil
 	}
-	f, err := os.Open(bfs.buildDir + fullName)
+	f, err := os.Open(bfs.sourceDir + fullName)
+
 	if err != nil {
-		return nil, errors.New("pageDir Open: Can not open file at " + name)
+		return nil, errors.New("pageDir Open: Can not open static file at " + name)
 	}
+
 	return f, nil
+
 }
 
 func (bfs *blogfs) needsUpdate(p *page) bool {
@@ -207,35 +220,28 @@ const basicPage = `
 <html>
     <head>
 	<meta charset="utf-8">
-	<link rel="stylesheet" href="/index.css">
+	<link rel="stylesheet" href="https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"/>
 	<title>{{.Title}}</title>
     </head>
-    <body class="vanilla-bean">
-	<div class="blocks">
-	    <div class="block b25 bh20 oblique ">
-		<ul class="mushroom simple-nav ">
+    <body class="bg-washed-yellow pa4">
+	<div class="flex justify-around">
+	    <div class="w-30 mw5 bg-washed-green bw2 ba br1 pl2 pr4 h-25">
+		<ul class="list">
 		    {{range $key, $element := .Sidebar}}
-		    <div class="border-solid-thick">
-			<h5><a href="{{$key}}">{{$key}}</a></h5>
+		    <div class="measure">
+			<h3><a href="{{$key}}">{{$key}}</a></h3>
 			<ul>
 			{{range $element}}
-			    <li><a href="{{.Path}}">{{.Title}}</a></li>
+			    <li class="br1"><a href="{{.Path}}">{{.Title}}</a></li>
 			{{end}}
-                        </ul>
+			</ul>
 		    </div>
-                    {{end}}
+		    {{end}}
 		</ul>
 	    </div>
-	    <div class="block b75 bh100 justify">
-		<div class="blocks">
-		    <div class="silver block b100 bh10">
-			<h1>{{.Title}}</h1>
-			<hr class="jagged-rule-dark">
-		    </div>
-		    <div class="border-solid-thin block b100 bh90 flow-text">
-			{{.Body}}
-		    </div>
-		</div>
+	    <div class="w-70 ba bw2 ma3 pl3 bg-washed-green">
+		<h3 class="f1 measure">{{.Title}}</h3>
+		{{.Body}}
 	    </div>
 	</div>
     </body>
