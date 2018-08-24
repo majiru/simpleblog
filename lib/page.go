@@ -15,6 +15,7 @@ import (
 
 const defaultSourceDir = "source"
 const defaultBuldDir = "build"
+const defaultStaticDir = "static"
 
 type page struct {
 	Title   string
@@ -26,33 +27,29 @@ type page struct {
 type blogfs struct {
 	sourceDir string
 	buildDir  string
+	staticDir string
 }
 
 func (bfs blogfs) Open(name string) (http.File, error) {
 	fullName := filepath.Join("/", filepath.FromSlash(path.Clean("/"+name)))
 
-	if isWebPage(fullName) {
-		dir, shortName := filepath.Split(fullName)
-		p, _ := newPage(shortName, fullName)
-		if bfs.needsUpdate(p) {
-			bfs.updateStatic(dir)
-		}
-		f, err := os.Open(bfs.buildDir + fullName)
-
-		if err != nil {
-			return nil, errors.New("pageDir Open: Can not open built html at " + name)
-		}
-
-		return f, nil
+	//Check to see if the requested file is static
+	if f, err := os.Open(bfs.staticDir + fullName); err == nil {
+		return f, err
 	}
-	f, err := os.Open(bfs.sourceDir + fullName)
 
+	dir, shortName := filepath.Split(fullName)
+	p, _ := newPage(shortName, fullName)
+	if bfs.needsUpdate(p) {
+		bfs.updateStatic(dir)
+	}
+
+	f, err := os.Open(bfs.buildDir + fullName)
 	if err != nil {
 		return nil, errors.New("pageDir Open: Can not open static file at " + name)
 	}
 
 	return f, nil
-
 }
 
 func (bfs *blogfs) needsUpdate(p *page) bool {
@@ -87,10 +84,11 @@ func (bfs *blogfs) needsUpdate(p *page) bool {
 }
 
 func (bfs *blogfs) updateStatic(path string) {
-	pages, dirs := bfs.openDir(path, true)
+	pages, dirs := bfs.openDir(path)
 
 	for _, p := range pages {
 		bfs.getSiblings(&p)
+		p.read(bfs.sourceDir)
 		p.write(bfs.buildDir)
 	}
 	for _, d := range dirs {
@@ -98,24 +96,13 @@ func (bfs *blogfs) updateStatic(path string) {
 	}
 }
 
-func (bfs *blogfs) openDir(path string, readBody bool) (pages, dirpages []page) {
+func (bfs *blogfs) openDir(path string) (pages, dirpages []page) {
 	files, dirs, err := readDir(bfs.sourceDir + path)
 	if err != nil {
 		log.Fatal("openDir: " + err.Error())
 	}
 	for _, f := range files {
-		if !isWebPage(f) {
-			continue
-		}
 		p, _ := newPage(f, path+f)
-		if readBody {
-			content, err := ioutil.ReadFile(bfs.sourceDir + path + f)
-			if err != nil {
-				log.Fatal("openDir: " + err.Error())
-			}
-			content = blackfriday.Run(content)
-			p.Body = string(content)
-		}
 		pages = append(pages, *p)
 	}
 	for _, d := range dirs {
@@ -134,7 +121,7 @@ func (bfs *blogfs) getSiblings(p *page) {
 		tempDir := strings.Join(dirs[:i+1], "/")
 		tempDir += "/"
 		var subdirs []page
-		siblings[tempDir], subdirs = bfs.openDir(tempDir, false)
+		siblings[tempDir], subdirs = bfs.openDir(tempDir)
 		siblings[tempDir] = append(siblings[tempDir], subdirs...)
 
 	}
@@ -147,6 +134,15 @@ func (p *page) cleanTitle() {
 	if p.Title == "Index" {
 		p.Title = "Home"
 	}
+}
+
+func (p *page) read(root string) {
+	content, err := ioutil.ReadFile(root + p.Path)
+	if err != nil {
+		log.Fatal("openDir: " + err.Error())
+	}
+	content = blackfriday.Run(content)
+	p.Body = string(content)
 }
 
 func (p *page) write(root string) {
@@ -177,10 +173,6 @@ func readDir(inputDir string) (files, dirs []string, outErr error) {
 	return
 }
 
-func isWebPage(path string) bool {
-	return strings.HasSuffix(path, ".html") || strings.HasSuffix(path, "/")
-}
-
 func newPage(args ...string) (p *page, err error) {
 	p = &page{}
 	switch len(args) {
@@ -205,8 +197,10 @@ func newBfs(path string) (bfs *blogfs) {
 	bfs = &blogfs{}
 	os.Mkdir(path+defaultSourceDir, 0755)
 	os.Mkdir(path+defaultBuldDir, 0755)
+	os.Mkdir(path+defaultStaticDir, 0755)
 	bfs.sourceDir = path + defaultSourceDir
 	bfs.buildDir = path + defaultBuldDir
+	bfs.staticDir = path + defaultStaticDir
 	return
 }
 
