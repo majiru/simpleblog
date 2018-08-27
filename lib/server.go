@@ -1,6 +1,7 @@
 package simpleblog
 
 import (
+	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -15,33 +16,23 @@ const domainDir = "./domains/"
 const rootDomainDir = "localhost/"
 
 func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if handler := sm.route(r.Host); handler != nil {
-		handler.ServeHTTP(w, r)
-	} else {
-		http.Error(w, r.Host, 403)
-	}
-}
-
-func (sm sectionMux) route(addr string) http.Handler {
-	//If the user is connecting on a non 80 port
+	addr := r.Host
+	//If the user is connecting on a non standard port
 	if strings.Contains(addr, ":") {
 		addr = strings.Split(addr, ":")[0]
 	}
-	if fs := sm[addr]; fs != nil {
-		return http.FileServer(*fs)
-	}
-	//In the event that the requested page is a directory
 	if fs := sm[addr+"/"]; fs != nil {
-		return http.FileServer(*fs)
+		fs.ServeHTTP(w, r)
+		return
 	}
 	//Nothing found return 404
-	return http.NotFoundHandler()
+	http.NotFoundHandler().ServeHTTP(w, r)
 }
 
-func (sm sectionMux) Parse(rootPath string) {
+func (sm sectionMux) Parse(rootPath string) error {
 	_, dirs, err := readDir(rootPath)
 	if err != nil {
-		log.Fatal("Could not read domain directory")
+		return errors.New("Parse: Could not read domain directory\n" + err.Error())
 	}
 
 	for _, d := range dirs {
@@ -51,16 +42,7 @@ func (sm sectionMux) Parse(rootPath string) {
 		}
 		sm[d] = newBfs(rootPath + d)
 	}
-
-}
-
-/*Build Outputes */
-func Build() {
-	sm := make(sectionMux)
-	sm.Parse(domainDir)
-	for _, bfs := range sm {
-		bfs.updateStatic("/")
-	}
+	return nil
 }
 
 /*Setup does a first time initalization of the directories*/
@@ -68,25 +50,30 @@ func Setup() {
 	os.Mkdir(domainDir, 0755)
 	os.Mkdir(domainDir+rootDomainDir, 0755)
 	os.Mkdir(domainDir+rootDomainDir+defaultSourceDir, 0755)
+	os.Mkdir(domainDir+rootDomainDir+defaultStaticDir, 0755)
 }
 
-/*Servefcgi starts a FastCGI listener using a sectionMux*/
-func Servefcgi(port string) {
+//Serve starts a listener with a given port on the given protocol
+//currently supported are fcgi(fastcgi) and http
+func Serve(port, proto string) error {
 	port = ":" + port
 	sm := make(sectionMux)
-	sm.Parse(domainDir)
-
-	l, err := net.Listen("tcp", port)
+	err := sm.Parse(domainDir)
 	if err != nil {
-		log.Fatal(err)
+		return errors.New("Serve: Could not parse sections\n" + err.Error())
 	}
-	log.Fatal(fcgi.Serve(l, sm))
-}
 
-/*Serve serves the root domain over HTTP*/
-func Serve(port string) {
-	port = ":" + port
-	sm := make(sectionMux)
-	sm.Parse(domainDir)
-	log.Fatal(http.ListenAndServe(port, sm))
+	switch proto {
+	case "http":
+		log.Fatal(http.ListenAndServe(port, sm))
+	case "fastcgi":
+		fallthrough
+	case "fcgi":
+		l, err := net.Listen("tcp", port)
+		if err != nil {
+			return errors.New("Serve: Failed to start FCGI client\n" + err.Error())
+		}
+		log.Fatal(fcgi.Serve(l, sm))
+	}
+	return errors.New("Serve: Protocol not understood")
 }

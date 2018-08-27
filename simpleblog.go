@@ -10,8 +10,7 @@ const usage = `
 simpleblog  {init, build, run}
 Commands:
     init: Creates program dirs
-    build: Writes output to files
-    run: Writes output to files and serves content
+    run: Serve content
 `
 
 func main() {
@@ -32,19 +31,10 @@ func main() {
 		switch arg {
 		case "init":
 			simpleblog.Setup()
-		case "build":
-			simpleblog.Build()
 		case "run":
-			switch *protocol {
-			case "http":
-				simpleblog.Serve(*port)
-			case "fcgi":
-				fallthrough
-			case "fastcgi":
-				simpleblog.Servefcgi(*port)
-			default:
+			if err := simpleblog.Serve(*port, *protocol); err != nil {
 				needsHelp = true
-				fmt.Println("Protocol: '" + *protocol + "' not understood")
+				fmt.Println(err.Error())
 			}
 		default:
 			needsHelp = true

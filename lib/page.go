@@ -3,6 +3,7 @@ package simpleblog
 import (
 	"errors"
 	"gopkg.in/russross/blackfriday.v2"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -14,7 +15,6 @@ import (
 )
 
 const defaultSourceDir = "source"
-const defaultBuldDir = "build"
 const defaultStaticDir = "static"
 
 type page struct {
@@ -26,74 +26,33 @@ type page struct {
 
 type blogfs struct {
 	sourceDir string
-	buildDir  string
 	staticDir string
 }
 
-func (bfs blogfs) Open(name string) (http.File, error) {
-	fullName := filepath.Join("/", filepath.FromSlash(path.Clean("/"+name)))
+func (bfs blogfs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	requestedFile := r.URL.Path
+	requestedFile = filepath.Join("/", filepath.FromSlash(path.Clean("/"+requestedFile)))
 
-	//Check to see if the requested file is static
-	if f, err := os.Open(bfs.staticDir + fullName); err == nil {
-		return f, err
-	}
-
-	dir, shortName := filepath.Split(fullName)
-	p, _ := newPage(shortName, fullName)
-	if bfs.needsUpdate(p) {
-		bfs.updateStatic(dir)
-	}
-
-	f, err := os.Open(bfs.buildDir + fullName)
-	if err != nil {
-		return nil, errors.New("pageDir Open: Can not open static file at " + name)
-	}
-
-	return f, nil
-}
-
-func (bfs *blogfs) needsUpdate(p *page) bool {
-	sourceFile, err := os.Stat(bfs.sourceDir + p.Path)
-	if err != nil {
-		return false
-	}
-
-	destinationFile, err := os.Stat(bfs.buildDir + p.Path)
-	if err != nil {
-		return true
-	}
-
-	if destinationFile.ModTime().Before(sourceFile.ModTime()) {
-		return true
-	}
-
-	dir, _ := filepath.Split(p.Path)
-	dirs, err := ioutil.ReadDir(bfs.buildDir + dir)
-	if err != nil {
-		log.Fatal("needsUpdate:" + err.Error())
-	}
-
-	for _, f := range dirs {
-		if !f.IsDir() {
-			if f.ModTime().Before(sourceFile.ModTime()) {
-				return true
-			}
+	if fd, err := os.Stat(bfs.sourceDir + requestedFile); err == nil {
+		if fd.IsDir() {
+			requestedFile = filepath.Join(requestedFile, "/index.html")
 		}
-	}
-	return false
-}
-
-func (bfs *blogfs) updateStatic(path string) {
-	pages, dirs := bfs.openDir(path)
-
-	for _, p := range pages {
-		bfs.getSiblings(&p)
+		_, shortName := filepath.Split(requestedFile)
+		p, _ := newPage(shortName, requestedFile)
+		bfs.getSiblings(p)
 		p.read(bfs.sourceDir)
-		p.write(bfs.buildDir)
+		p.write(w)
+		return
 	}
-	for _, d := range dirs {
-		bfs.updateStatic(d.Path)
+
+	//Check to see if the file exists in the static directory
+	if _, err := os.Stat(bfs.staticDir + requestedFile); err == nil {
+		http.ServeFile(w, r, bfs.staticDir+requestedFile)
+		return
 	}
+
+	//Nothing found return 404
+	http.NotFoundHandler().ServeHTTP(w, r)
 }
 
 func (bfs *blogfs) openDir(path string) (pages, dirpages []page) {
@@ -139,28 +98,21 @@ func (p *page) cleanTitle() {
 func (p *page) read(root string) {
 	content, err := ioutil.ReadFile(root + p.Path)
 	if err != nil {
-		log.Fatal("openDir: " + err.Error())
+		log.Fatal("page read: " + err.Error())
 	}
 	content = blackfriday.Run(content)
 	p.Body = string(content)
 }
 
-func (p *page) write(root string) {
-	fd, err := os.Create(root + p.Path)
-
-	if err != nil {
-		dir, _ := filepath.Split(root + p.Path)
-		os.Mkdir(dir, 0755)
-	}
-
-	t, err := template.New("page").Parse(basicPage)
-	t.Execute(fd, p)
+func (p *page) write(dest io.Writer) {
+	t, _ := template.New("page").Parse(basicPage)
+	t.Execute(dest, p)
 }
 
 func readDir(inputDir string) (files, dirs []string, outErr error) {
 	infoFiles, err := ioutil.ReadDir(inputDir)
 	if err != nil {
-		outErr = err
+		outErr = errors.New("readDir: Could not read dir\n" + err.Error())
 		return
 	}
 	for _, f := range infoFiles {
@@ -187,7 +139,6 @@ func newPage(args ...string) (p *page, err error) {
 	default:
 		err = errors.New("newPage: expected 1-3 arguments")
 		return
-
 	}
 	p.cleanTitle()
 	return
@@ -196,10 +147,8 @@ func newPage(args ...string) (p *page, err error) {
 func newBfs(path string) (bfs *blogfs) {
 	bfs = &blogfs{}
 	os.Mkdir(path+defaultSourceDir, 0755)
-	os.Mkdir(path+defaultBuldDir, 0755)
 	os.Mkdir(path+defaultStaticDir, 0755)
 	bfs.sourceDir = path + defaultSourceDir
-	bfs.buildDir = path + defaultBuldDir
 	bfs.staticDir = path + defaultStaticDir
 	return
 }
