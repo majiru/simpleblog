@@ -15,11 +15,9 @@ Commands:
 `
 
 func main() {
-	var hostname = flag.String("Hostname", "localhost", "Hostname for FastCGI")
 	var port = flag.String("Port", "8080", "Port to run service on")
 	var protocol = flag.String("Protocol", "http", "http or fcgi")
 
-	flag.StringVar(hostname, "h", *hostname, "hostname for FastCGI")
 	flag.StringVar(port, "p", *port, "Port to run service on")
 	flag.StringVar(protocol, "r", *protocol, "http or fcgi")
 	flag.Parse()
@@ -43,7 +41,7 @@ func main() {
 			case "fcgi":
 				fallthrough
 			case "fastcgi":
-				simpleblog.Servefcgi(*hostname, *port)
+				simpleblog.Servefcgi(*port)
 			default:
 				needsHelp = true
 				fmt.Println("Protocol: '" + *protocol + "' not understood")

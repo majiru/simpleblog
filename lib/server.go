@@ -6,38 +6,60 @@ import (
 	"net/http"
 	"net/http/fcgi"
 	"os"
+	"strings"
 )
 
-type sectionMux map[string]http.Handler
+type sectionMux map[string]*blogfs
 
 const domainDir = "./domains/"
-const rootDomainDir = "root/"
+const rootDomainDir = "localhost/"
 
 func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if handler := sm[r.Host]; handler != nil {
+	if handler := sm.route(r.Host); handler != nil {
 		handler.ServeHTTP(w, r)
 	} else {
 		http.Error(w, r.Host, 403)
 	}
 }
 
-func (sm sectionMux) Parse(fsIndex map[string]blogfs, hostname string) {
-	sm[hostname] = http.FileServer(fsIndex[rootDomainDir])
-	sm["www."+hostname] = http.FileServer(fsIndex[rootDomainDir])
-	delete(fsIndex, "root")
-
-	for k, v := range fsIndex {
-		k = k[:len(k)-1]
-		k += "."
-		sm[k+hostname] = http.FileServer(v)
+func (sm sectionMux) route(addr string) http.Handler {
+	//If the user is connecting on a non 80 port
+	if strings.Contains(addr, ":") {
+		addr = strings.Split(addr, ":")[0]
 	}
+	if fs := sm[addr]; fs != nil {
+		return http.FileServer(*fs)
+	}
+	//In the event that the requested page is a directory
+	if fs := sm[addr+"/"]; fs != nil {
+		return http.FileServer(*fs)
+	}
+	//Nothing found return 404
+	return http.NotFoundHandler()
+}
+
+func (sm sectionMux) Parse(rootPath string) {
+	_, dirs, err := readDir(rootPath)
+	if err != nil {
+		log.Fatal("Could not read domain directory")
+	}
+
+	for _, d := range dirs {
+		if strings.HasPrefix(d, "www.") {
+			bareHostName := strings.Split(d, "www.")[1]
+			sm[bareHostName] = newBfs(rootPath + d)
+		}
+		sm[d] = newBfs(rootPath + d)
+	}
+
 }
 
 /*Build Outputes */
 func Build() {
-	bfs := newBfsFromDir(domainDir)
-	for _, fs := range bfs {
-		fs.updateStatic("/")
+	sm := make(sectionMux)
+	sm.Parse(domainDir)
+	for _, bfs := range sm {
+		bfs.updateStatic("/")
 	}
 }
 
@@ -49,10 +71,10 @@ func Setup() {
 }
 
 /*Servefcgi starts a FastCGI listener using a sectionMux*/
-func Servefcgi(hostname, port string) {
+func Servefcgi(port string) {
 	port = ":" + port
 	sm := make(sectionMux)
-	sm.Parse(newBfsFromDir(domainDir), hostname)
+	sm.Parse(domainDir)
 
 	l, err := net.Listen("tcp", port)
 	if err != nil {
@@ -64,8 +86,7 @@ func Servefcgi(hostname, port string) {
 /*Serve serves the root domain over HTTP*/
 func Serve(port string) {
 	port = ":" + port
-	bfs := newBfs(domainDir + rootDomainDir)
-	bfs.updateStatic("/")
-	http.Handle("/", http.FileServer(bfs))
-	log.Fatal(http.ListenAndServe(port, nil))
+	sm := make(sectionMux)
+	sm.Parse(domainDir)
+	log.Fatal(http.ListenAndServe(port, sm))
 }

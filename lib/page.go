@@ -204,18 +204,6 @@ func newBfs(path string) (bfs *blogfs) {
 	return
 }
 
-func newBfsFromDir(path string) (bfs map[string]blogfs) {
-	bfs = make(map[string]blogfs)
-	_, dirs, err := readDir(path)
-	if err != nil {
-		log.Fatal("newBfsFromDir: " + err.Error())
-	}
-	for _, d := range dirs {
-		bfs[d] = *newBfs(domainDir + d)
-	}
-	return
-}
-
 const basicPage = `
 <!DOCTYPE html>
 <html>
@@ -225,22 +213,22 @@ const basicPage = `
 	<title>{{.Title}}</title>
     </head>
     <body class="bg-washed-yellow pa4">
-	<div class="flex justify-around">
-	    <div class="w-30 mw5 bg-washed-green bw2 ba br1 pl2 pr4 h-25">
+	<div class="flex flex-wrap justify-around">
+	    <div class="w-40 mw5 bg-washed-green bw2 ba pa2 ma3 h-25">
 		<ul class="list">
 		    {{range $key, $element := .Sidebar}}
-		    <div class="measure">
-			<h3><a href="{{$key}}">{{$key}}</a></h3>
+		    <div>
+			<h3 class="f4 measure-narrow"><a href="{{$key}}">{{$key}}</a></h3>
 			<ul>
 			{{range $element}}
-			    <li class="br1"><a href="{{.Path}}">{{.Title}}</a></li>
+			    <li class="f5 measure-narrow"><a href="{{.Path}}">{{.Title}}</a></li>
 			{{end}}
 			</ul>
 		    </div>
 		    {{end}}
 		</ul>
 	    </div>
-	    <div class="w-70 ba bw2 ma3 pl3 bg-washed-green">
+	    <div class="w-80 ba bw2 pa2 ma3 bg-washed-green">
 		<h3 class="f1 measure">{{.Title}}</h3>
 		{{.Body}}
 	    </div>
