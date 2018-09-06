@@ -16,6 +16,7 @@ import (
 
 const defaultSourceDir = "source"
 const defaultStaticDir = "static"
+const defaultTemplate = domainDir + "basic.tmpl"
 
 type page struct {
 	Title   string
@@ -25,13 +26,20 @@ type page struct {
 }
 
 type blogfs struct {
-	sourceDir string
-	staticDir string
+	sourceDir    string
+	staticDir    string
+	templateFile string
 }
 
 func (bfs blogfs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestedFile := r.URL.Path
 	requestedFile = filepath.Join("/", filepath.FromSlash(path.Clean("/"+requestedFile)))
+
+	tmpl, tmplerr := ioutil.ReadFile(bfs.templateFile)
+	if tmplerr != nil {
+		http.Error(w, "Error finding site template", 500)
+		return
+	}
 
 	if fd, err := os.Stat(bfs.sourceDir + requestedFile); err == nil {
 		if fd.IsDir() {
@@ -41,7 +49,9 @@ func (bfs blogfs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p, _ := newPage(shortName, requestedFile)
 		bfs.getSiblings(p)
 		p.read(bfs.sourceDir)
-		p.write(w)
+		if err := p.write(w, string(tmpl)); err != nil {
+			http.Error(w, "Erorr parsing template", 500)
+		}
 		return
 	}
 
@@ -104,9 +114,10 @@ func (p *page) read(root string) {
 	p.Body = string(content)
 }
 
-func (p *page) write(dest io.Writer) {
-	t, _ := template.New("page").Parse(basicPage)
+func (p *page) write(dest io.Writer, tmpl string) error {
+	t, err := template.New("page").Parse(tmpl)
 	t.Execute(dest, p)
+	return err
 }
 
 func readDir(inputDir string) (files, dirs []string, outErr error) {
@@ -150,38 +161,6 @@ func newBfs(path string) (bfs *blogfs) {
 	os.Mkdir(path+defaultStaticDir, 0755)
 	bfs.sourceDir = path + defaultSourceDir
 	bfs.staticDir = path + defaultStaticDir
+	bfs.templateFile = defaultTemplate
 	return
 }
-
-const basicPage = `
-<!DOCTYPE html>
-<html>
-    <head>
-	<meta charset="utf-8">
-	<link rel="stylesheet" href="https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"/>
-	<title>{{.Title}}</title>
-    </head>
-    <body class="bg-washed-yellow pa4">
-	<div class="flex flex-wrap justify-around">
-	    <div class="w-40 mw5 bg-washed-green bw2 ba pa2 ma3 h-25">
-		<ul class="list">
-		    {{range $key, $element := .Sidebar}}
-		    <div>
-			<h3 class="f4 measure-narrow"><a href="{{$key}}">{{$key}}</a></h3>
-			<ul>
-			{{range $element}}
-			    <li class="f5 measure-narrow"><a href="{{.Path}}">{{.Title}}</a></li>
-			{{end}}
-			</ul>
-		    </div>
-		    {{end}}
-		</ul>
-	    </div>
-	    <div class="w-80 ba bw2 pa2 ma3 bg-washed-green">
-		<h3 class="f1 measure">{{.Title}}</h3>
-		{{.Body}}
-	    </div>
-	</div>
-    </body>
-</html>
-`
