@@ -16,7 +16,8 @@ import (
 
 const defaultSourceDir = "source"
 const defaultStaticDir = "static"
-const defaultTemplate = domainDir + "basic.tmpl"
+const templateName = "page.tmpl"
+const defaultTemplate = domainDir + templateName
 
 type page struct {
 	Title   string
@@ -136,8 +137,8 @@ func readDir(inputDir string) (files, dirs []string, outErr error) {
 	return
 }
 
-func newPage(args ...string) (p *page, err error) {
-	p = &page{}
+func newPage(args ...string) (*page, error) {
+	p := &page{}
 	switch len(args) {
 	case 3:
 		p.Body = args[2]
@@ -148,19 +149,18 @@ func newPage(args ...string) (p *page, err error) {
 	case 1:
 		p.Title = args[0]
 	default:
-		err = errors.New("newPage: expected 1-3 arguments")
-		return
+		return nil, errors.New("newPage: expected 1-3 arguments")
 	}
 	p.cleanTitle()
-	return
+	return p, nil
 }
 
-func newBfs(path string) (bfs *blogfs) {
-	bfs = &blogfs{}
+func newBfs(path string) *blogfs {
+	bfs := &blogfs{path + defaultSourceDir, path + defaultStaticDir, defaultTemplate}
+	if fd, err := os.Stat(path + templateName); err == nil {
+		bfs.templateFile = path + fd.Name()
+	}
 	os.Mkdir(path+defaultSourceDir, 0755)
 	os.Mkdir(path+defaultStaticDir, 0755)
-	bfs.sourceDir = path + defaultSourceDir
-	bfs.staticDir = path + defaultStaticDir
-	bfs.templateFile = defaultTemplate
-	return
+	return bfs
 }
