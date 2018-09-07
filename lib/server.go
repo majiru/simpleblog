@@ -38,9 +38,9 @@ func (sm sectionMux) Parse(rootPath string) error {
 	for _, d := range dirs {
 		if strings.HasPrefix(d, "www.") {
 			bareHostName := strings.Split(d, "www.")[1]
-			sm[bareHostName] = newBfs(rootPath + d)
+			sm[bareHostName] = newBfs(rootPath+d, nil)
 		}
-		sm[d] = newBfs(rootPath + d)
+		sm[d] = newBfs(rootPath+d, nil)
 	}
 	return nil
 }

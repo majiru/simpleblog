@@ -26,19 +26,22 @@ type page struct {
 	Sidebar map[string][]page
 }
 
+type parser func(in []byte) (out string, err error)
+
 type blogfs struct {
 	sourceDir    string
 	staticDir    string
 	templateFile string
+	Parse        parser
 }
 
 func (bfs blogfs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestedFile := r.URL.Path
 	requestedFile = filepath.Join("/", filepath.FromSlash(path.Clean("/"+requestedFile)))
 
-	tmpl, tmplerr := ioutil.ReadFile(bfs.templateFile)
-	if tmplerr != nil {
-		http.Error(w, "Error finding site template", 500)
+	//Check to see if the file exists in the static directory
+	if _, err := os.Stat(bfs.staticDir + requestedFile); err == nil {
+		http.ServeFile(w, r, bfs.staticDir+requestedFile)
 		return
 	}
 
@@ -49,16 +52,10 @@ func (bfs blogfs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_, shortName := filepath.Split(requestedFile)
 		p, _ := newPage(shortName, requestedFile)
 		bfs.getSiblings(p)
-		p.read(bfs.sourceDir)
-		if err := p.write(w, string(tmpl)); err != nil {
-			http.Error(w, "Erorr parsing template", 500)
+		bfs.read(p)
+		if err := bfs.write(w, p); err != nil {
+			http.Error(w, "Erorr parsing template "+err.Error(), 500)
 		}
-		return
-	}
-
-	//Check to see if the file exists in the static directory
-	if _, err := os.Stat(bfs.staticDir + requestedFile); err == nil {
-		http.ServeFile(w, r, bfs.staticDir+requestedFile)
 		return
 	}
 
@@ -98,27 +95,34 @@ func (bfs *blogfs) getSiblings(p *page) {
 	p.Sidebar = siblings
 }
 
-func (p *page) cleanTitle() {
-	p.Title = strings.Replace(p.Title, "_", " ", -1)
-	p.Title = strings.Title(strings.Split(p.Title, ".html")[0])
-	if p.Title == "Index" {
-		p.Title = "Home"
-	}
-}
-
-func (p *page) read(root string) {
-	content, err := ioutil.ReadFile(root + p.Path)
+func (bfs *blogfs) read(p *page) error {
+	content, err := ioutil.ReadFile(bfs.sourceDir + p.Path)
 	if err != nil {
-		log.Fatal("page read: " + err.Error())
+		return errors.New("bfs.Read: " + err.Error())
 	}
-	content = blackfriday.Run(content)
-	p.Body = string(content)
+	body, err := bfs.Parse(content)
+	if err != nil {
+		return errors.New("bfs.Read: " + err.Error())
+	}
+	p.Body = body
+	return nil
 }
 
-func (p *page) write(dest io.Writer, tmpl string) error {
-	t, err := template.New("page").Parse(tmpl)
-	t.Execute(dest, p)
+func (bfs *blogfs) write(dest io.Writer, p *page) error {
+	t, err := template.ParseFiles(bfs.templateFile)
+	if err != nil {
+		return errors.New("bfs.Write: " + err.Error())
+	}
+
+	err = t.Execute(dest, p)
+	if err != nil {
+		return errors.New("bfs.Write: " + err.Error())
+	}
 	return err
+}
+
+func markdown2html(in []byte) (string, error) {
+	return string(blackfriday.Run(in)), nil
 }
 
 func readDir(inputDir string) (files, dirs []string, outErr error) {
@@ -135,6 +139,14 @@ func readDir(inputDir string) (files, dirs []string, outErr error) {
 		}
 	}
 	return
+}
+
+func (p *page) cleanTitle() {
+	p.Title = strings.Replace(p.Title, "_", " ", -1)
+	p.Title = strings.Title(strings.Split(p.Title, ".html")[0])
+	if p.Title == "Index" {
+		p.Title = "Home"
+	}
 }
 
 func newPage(args ...string) (*page, error) {
@@ -155,8 +167,11 @@ func newPage(args ...string) (*page, error) {
 	return p, nil
 }
 
-func newBfs(path string) *blogfs {
-	bfs := &blogfs{path + defaultSourceDir, path + defaultStaticDir, defaultTemplate}
+func newBfs(path string, p parser) *blogfs {
+	if p == nil {
+		p = markdown2html
+	}
+	bfs := &blogfs{path + defaultSourceDir, path + defaultStaticDir, defaultTemplate, markdown2html}
 	if fd, err := os.Stat(path + templateName); err == nil {
 		bfs.templateFile = path + fd.Name()
 	}
