@@ -39,12 +39,6 @@ func (bfs blogfs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestedFile := r.URL.Path
 	requestedFile = filepath.Join("/", filepath.FromSlash(path.Clean("/"+requestedFile)))
 
-	//Check to see if the file exists in the static directory
-	if _, err := os.Stat(bfs.staticDir + requestedFile); err == nil {
-		http.ServeFile(w, r, bfs.staticDir+requestedFile)
-		return
-	}
-
 	if fd, err := os.Stat(bfs.sourceDir + requestedFile); err == nil {
 		if fd.IsDir() {
 			requestedFile = filepath.Join(requestedFile, "/index.html")
@@ -56,6 +50,12 @@ func (bfs blogfs) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if err := bfs.write(w, p); err != nil {
 			http.Error(w, "Erorr parsing template "+err.Error(), 500)
 		}
+		return
+	}
+
+	//Check to see if the file exists in the static directory
+	if _, err := os.Stat(bfs.staticDir + requestedFile); err == nil {
+		http.ServeFile(w, r, bfs.staticDir+requestedFile)
 		return
 	}
 
