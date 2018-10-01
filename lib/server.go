@@ -2,18 +2,27 @@ package simpleblog
 
 import (
 	"errors"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/http/fcgi"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
-type sectionMux map[string]*blogfs
+type webfs interface {
+	Read(requestFile string) (io.ReadSeeker, error)
+}
+
+type sectionMux map[string]webfs
 
 const domainDir = "./domains/"
 const rootDomainDir = "localhost/"
+const mediaSubDomain = "media."
 
 func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	addr := r.Host
@@ -21,10 +30,23 @@ func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.Contains(addr, ":") {
 		addr = strings.Split(addr, ":")[0]
 	}
+
 	if fs := sm[addr+"/"]; fs != nil {
-		fs.ServeHTTP(w, r)
+		requestedFile := r.URL.Path
+		requestedFile = filepath.Join("/", filepath.FromSlash(path.Clean("/"+requestedFile)))
+		content, err := fs.Read(requestedFile)
+		if err != nil {
+			if err.Error() == "File not found" {
+				http.NotFoundHandler().ServeHTTP(w, r)
+				return
+			}
+			http.Error(w, "Internal server error", 500)
+			return
+		}
+		http.ServeContent(w, r, requestedFile, time.Now(), content)
 		return
 	}
+
 	//Nothing found return 404
 	http.NotFoundHandler().ServeHTTP(w, r)
 }
@@ -38,9 +60,13 @@ func (sm sectionMux) Parse(rootPath string) error {
 	for _, d := range dirs {
 		if strings.HasPrefix(d, "www.") {
 			bareHostName := strings.Split(d, "www.")[1]
-			sm[bareHostName] = newBfs(rootPath+d, nil)
+			sm[bareHostName] = newBfs(rootPath + d)
 		}
-		sm[d] = newBfs(rootPath+d, nil)
+		if strings.HasPrefix(d, mediaSubDomain) {
+			sm[d] = &mediafs{rootPath + d}
+			continue
+		}
+		sm[d] = newBfs(rootPath + d)
 	}
 	return nil
 }
