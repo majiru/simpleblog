@@ -101,9 +101,15 @@ func Setup() {
 	}
 	f.Close()
 
+	f, err = os.OpenFile(domainDir+rootDomainDir+"/dir.tmpl", os.O_WRONLY|os.O_CREATE, 0755)
 	if err != nil {
-		log.Print("Setup: Failed to initialize default index.md, ", err)
+		log.Print("Setup: Failed to create default dir.tmpl, ", err)
 	}
+	_, err = f.Write([]byte(directoryTemplate))
+	if err != nil {
+		log.Print("Setup: Failed to write default dir.tmpl, ", err)
+	}
+	f.Close()
 
 	err = os.Mkdir(domainDir+rootDomainDir+defaultStaticDir, 0755)
 	if err != nil {
@@ -161,6 +167,29 @@ const pageTemplate = `
 		<h3 class="f1 measure">{{.Title}}</h3>
 		{{.Body}}
 	    </div>
+	</div>
+    </body>
+</html>
+`
+
+const directoryTemplate = `
+<!DOCTYPE html>
+<html>
+    <head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"/>
+	<title>{{.Title}}</title>
+    </head>
+    <body class="bg-washed-yellow pa4">
+	<div class="ba4 bw2 pa2 ma3 bg-washed-green">
+	    <h3 class="f1 measure">{{.Title}}</h3>
+	    <ul>
+		 {{range $key, $element := .Sidebar}}
+		    {{range $element}}
+			<li class="f5 measure-narrow"><a href="{{.Path}}">{{.Title}}</a></li>
+		    {{end}}
+		{{end}}
+	    </ul>
 	</div>
     </body>
 </html>

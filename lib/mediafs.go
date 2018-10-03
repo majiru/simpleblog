@@ -10,6 +10,9 @@ import (
 	"text/template"
 )
 
+const dirTemplName = "dir.tmpl"
+const defaultDirTempl = domainDir + dirTemplName
+
 type mediafs struct {
 	root string
 }
@@ -50,7 +53,7 @@ func (mfs *mediafs) openDir(path string) (io.ReadSeeker, error) {
 	}
 	p.Sidebar = directory
 	var out bytes.Buffer
-	t, err := template.New("directory").Parse(directoryTemplate)
+	t, err := template.New("directory").ParseFiles(defaultDirTempl)
 	if err != nil {
 		return nil, errors.New("Template not found")
 	}
@@ -60,26 +63,3 @@ func (mfs *mediafs) openDir(path string) (io.ReadSeeker, error) {
 
 	return strings.NewReader(out.String()), nil
 }
-
-const directoryTemplate = `
-<!DOCTYPE html>
-<html>
-    <head>
-	<meta charset="utf-8">
-	<link rel="stylesheet" href="https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"/>
-	<title>{{.Title}}</title>
-    </head>
-    <body class="bg-washed-yellow pa4">
-	<div class="ba4 bw2 pa2 ma3 bg-washed-green">
-	    <h3 class="f1 measure">{{.Title}}</h3>
-	    <ul>
-		 {{range $key, $element := .Sidebar}}
-		    {{range $element}}
-			<li class="f5 measure-narrow"><a href="{{.Path}}">{{.Title}}</a></li>
-		    {{end}}
-		{{end}}
-	    </ul>
-	</div>
-    </body>
-</html>
-`
