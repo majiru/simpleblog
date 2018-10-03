@@ -111,7 +111,6 @@ func Setup() {
 //Serve starts a listener with a given port on the given protocol
 //currently supported are fcgi(fastcgi) and http
 func Serve(port, proto string) error {
-	port = ":" + port
 	sm := make(sectionMux)
 	err := sm.Parse(domainDir)
 	if err != nil {

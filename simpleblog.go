@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/majiru/simpleblog/lib"
+	"strconv"
 )
 
 const usage = `
@@ -14,10 +15,10 @@ Commands:
 `
 
 func main() {
-	var port = flag.String("port", "8080", "Port to run service on")
+	var port = flag.Int("port", 8080, "Port to run service on")
 	var protocol = flag.String("protocol", "http", "http or fcgi")
 
-	flag.StringVar(port, "p", *port, "Port to run service on")
+	flag.IntVar(port, "p", *port, "Port to run service on")
 	flag.StringVar(protocol, "r", *protocol, "http or fcgi")
 	flag.Parse()
 
@@ -32,7 +33,7 @@ func main() {
 		case "init":
 			simpleblog.Setup()
 		case "run":
-			if err := simpleblog.Serve(*port, *protocol); err != nil {
+			if err := simpleblog.Serve(`:`+strconv.Itoa(*port), *protocol); err != nil {
 				needsHelp = true
 				fmt.Println(err.Error())
 			}
