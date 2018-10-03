@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 )
@@ -39,9 +40,7 @@ func (mfs *mediafs) openDir(path string) (io.ReadSeeker, error) {
 	directory := make(map[string][]page)
 	directory["root"] = []page{}
 	for _, f := range files {
-		if path != "/" {
-			path += "/"
-		}
+		filepath.Join(path, "/")
 		listing, _ := newPage(f, path+f)
 		directory["root"] = append(directory["root"], *listing)
 	}

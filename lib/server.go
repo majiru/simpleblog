@@ -120,9 +120,7 @@ func Serve(port, proto string) error {
 	switch proto {
 	case "http":
 		log.Fatal(http.ListenAndServe(port, sm))
-	case "fastcgi":
-		fallthrough
-	case "fcgi":
+	case "fcgi", "fastcgi":
 		l, err := net.Listen("tcp", port)
 		if err != nil {
 			return errors.New("Serve: Failed to start FCGI client\n" + err.Error())
