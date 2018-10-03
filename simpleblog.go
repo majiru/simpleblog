@@ -7,15 +7,15 @@ import (
 )
 
 const usage = `
-simpleblog  {init, build, run}
+simpleblog  {init, run}
 Commands:
     init: Creates program dirs
     run: Serve content
 `
 
 func main() {
-	var port = flag.String("Port", "8080", "Port to run service on")
-	var protocol = flag.String("Protocol", "http", "http or fcgi")
+	var port = flag.String("port", "8080", "Port to run service on")
+	var protocol = flag.String("protocol", "http", "http or fcgi")
 
 	flag.StringVar(port, "p", *port, "Port to run service on")
 	flag.StringVar(protocol, "r", *protocol, "http or fcgi")

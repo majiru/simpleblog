@@ -7,10 +7,10 @@ import (
 )
 
 type page struct {
-	Title   string
-	Path    string
-	Body    string
-	Sidebar map[string][]page
+	Title		string
+	Path		string
+	Body		string
+	Sidebar	map[string][]page
 }
 
 func (p *page) cleanTitle() {
