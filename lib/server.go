@@ -24,6 +24,7 @@ const domainDir = "./domains/"
 const rootDomainDir = "localhost/"
 const mediaSubDomain = "media."
 
+/*Maps request to file system and serves content*/
 func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	addr := r.Host
 	//If the user is connecting on a non standard port
@@ -36,6 +37,7 @@ func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		requestedFile = filepath.Join("/", filepath.FromSlash(path.Clean("/"+requestedFile)))
 		content, err := fs.Read(requestedFile)
 		if err != nil {
+			log.Println("Error: " + err.Error() + " for request " + r.URL.Path)
 			if err.Error() == "File not found" {
 				http.NotFoundHandler().ServeHTTP(w, r)
 				return
@@ -51,6 +53,7 @@ func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.NotFoundHandler().ServeHTTP(w, r)
 }
 
+/*Parse creates sectionMux from directory*/
 func (sm sectionMux) Parse(rootPath string) error {
 	_, dirs, err := readDir(rootPath)
 	if err != nil {
