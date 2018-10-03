@@ -36,7 +36,7 @@ func newBfs(path string) *blogfs {
 func (bfs *blogfs) Read(request string) (io.ReadSeeker, error) {
 	if fd, err := os.Stat(bfs.sourceDir + request); err == nil {
 		if fd.IsDir() {
-			request = filepath.Join(request, "/index.html")
+			request = filepath.Join(request, "/index.md")
 		}
 		content, _ := ioutil.ReadFile(bfs.sourceDir + request)
 		content = blackfriday.Run(content)
