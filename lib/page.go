@@ -7,15 +7,15 @@ import (
 )
 
 type page struct {
-	Title		string
-	Path		string
-	Body		string
-	Sidebar	map[string][]page
+	Title   string
+	Path    string
+	Body    string
+	Sidebar map[string][]page
 }
 
 func (p *page) cleanTitle() {
 	p.Title = strings.Replace(p.Title, "_", " ", -1)
-	p.Title = strings.Title(strings.Split(p.Title, ".html")[0])
+	p.Title = strings.Title(strings.Split(p.Title, ".md")[0])
 	if p.Title == "Index" {
 		p.Title = "Home"
 	}
