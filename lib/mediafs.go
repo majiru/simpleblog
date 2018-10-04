@@ -17,6 +17,10 @@ type mediafs struct {
 	root string
 }
 
+func newMediafs(root string) webfs {
+	return &mediafs{root}
+}
+
 func (mfs *mediafs) Read(request string) (io.ReadSeeker, error) {
 	if fi, err := os.Stat(mfs.root + request); err == nil {
 		if !fi.IsDir() {

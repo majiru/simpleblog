@@ -3,6 +3,7 @@ package simpleblog
 import (
 	"errors"
 	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -22,9 +23,27 @@ type sectionMux map[string]webfs
 
 const domainDir = "./domains/"
 const rootDomainDir = "localhost/"
-const mediaSubDomain = "media."
 
-/*Maps request to file system and serves content*/
+//configTranslator maps strings to correct fs constructors
+var configTranslator = map[string]func(string) webfs{
+	"blog":  newBfs,
+	"media": newMediafs,
+}
+
+func newWebfs(path string) (webfs, error) {
+	read, err := ioutil.ReadFile(filepath.Join(path, "/type"))
+	if err != nil {
+		return nil, errors.New("type file not found: " + err.Error())
+	}
+	conf := strings.TrimSuffix(string(read), "\n")
+	constructor := configTranslator[conf]
+	if constructor == nil {
+		return nil, errors.New("Type " + string(conf) + " is not defined")
+	}
+	return constructor(path), nil
+}
+
+//Maps request to file system and serves content
 func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	addr := r.Host
 	//If the user is connecting on a non standard port
@@ -53,7 +72,7 @@ func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.NotFoundHandler().ServeHTTP(w, r)
 }
 
-/*Parse creates sectionMux from directory*/
+//Parse creates sectionMux from directory
 func (sm sectionMux) Parse(rootPath string) error {
 	_, dirs, err := readDir(rootPath)
 	if err != nil {
@@ -63,18 +82,24 @@ func (sm sectionMux) Parse(rootPath string) error {
 	for _, d := range dirs {
 		if strings.HasPrefix(d, "www.") {
 			bareHostName := strings.Split(d, "www.")[1]
-			sm[bareHostName] = newBfs(rootPath + d)
-		}
-		if strings.HasPrefix(d, mediaSubDomain) {
-			sm[d] = &mediafs{rootPath + d}
+			newfs, err := newWebfs(rootPath + d)
+			if err != nil {
+				return errors.New("Issue creating webfs at " + rootPath + d + " : " + err.Error())
+			}
+			sm[bareHostName] = newfs
+			sm[d] = newfs
 			continue
 		}
-		sm[d] = newBfs(rootPath + d)
+		newfs, err := newWebfs(rootPath + d)
+		if err != nil {
+			return errors.New("Issue creating webfs at " + rootPath + d + " : " + err.Error())
+		}
+		sm[d] = newfs
 	}
 	return nil
 }
 
-/*Setup does a first time initalization of the directories*/
+//Setup does a first time initalization of the directories
 func Setup() {
 	err := os.MkdirAll(domainDir+rootDomainDir+defaultSourceDir, 0755)
 	if err != nil {

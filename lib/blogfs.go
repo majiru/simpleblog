@@ -23,7 +23,7 @@ type blogfs struct {
 	templateFile string
 }
 
-func newBfs(path string) *blogfs {
+func newBfs(path string) webfs {
 	bfs := &blogfs{path + defaultSourceDir, path + defaultStaticDir, defaultTemplate}
 	if fd, err := os.Stat(path + templateName); err == nil {
 		bfs.templateFile = path + fd.Name()
