@@ -30,6 +30,7 @@ func main() {
 			break
 		}
 
+		// handle case of 'simpleblog init run'
 		fallthrough
 	case "run":
 		tailport := fmt.Sprintf(":%d", *port)
