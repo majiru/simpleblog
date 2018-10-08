@@ -21,8 +21,10 @@ type webfs interface {
 
 type sectionMux map[string]webfs
 
-const domainDir = "./domains/"
-const rootDomainDir = "localhost/"
+const (
+	domainDir = "./domains/"
+	rootDomainDir = "localhost/"
+)
 
 //configTranslator maps strings to correct fs constructors
 var configTranslator = map[string]func(string) webfs{
@@ -101,44 +103,46 @@ func (sm sectionMux) Parse(rootPath string) error {
 
 //Setup does a first time initalization of the directories
 func Setup() {
-	err := os.MkdirAll(domainDir+rootDomainDir+defaultSourceDir, 0755)
-	if err != nil {
-		log.Print("Setup: Failed to create directories, ", err)
+	domainRoot := filepath.Join(domainDir, rootDomainDir)
+
+	dirs := []string {
+		defaultSourceDir,
+		defaultStaticDir,
 	}
 
-	f, err := os.OpenFile(domainDir+rootDomainDir+defaultSourceDir+"/index.md", os.O_WRONLY|os.O_CREATE, 0755)
-	if err != nil {
-		log.Print("Setup: Failed to create default index.md, ", err)
+	pages := map[string]string{
+		filepath.Join(defaultSourceDir, "index.md"): indexMessage,
+		"page.tmpl": pageTemplate,
+		"dir.tmpl": directoryTemplate,
+		"type": typeDefault,
 	}
-	_, err = f.Write([]byte("# Hello from Simpleblog space\n\nThis is your home page.\n"))
-	if err != nil {
-		log.Print("Setup: Failed to write default index.md, ", err)
-	}
-	f.Close()
 
-	f, err = os.OpenFile(domainDir+rootDomainDir+"/page.tmpl", os.O_WRONLY|os.O_CREATE, 0755)
-	if err != nil {
-		log.Print("Setup: Failed to create default page.tmpl, ", err)
+	// create directories
+	for _, dir := range dirs {
+		full := filepath.Join(domainRoot, dir)
+		if err := os.MkdirAll(full, 0755); err != nil {
+			log.Printf("setup: failed to create directory '%s'", full)
+		}
 	}
-	_, err = f.Write([]byte(pageTemplate))
-	if err != nil {
-		log.Print("Setup: Failed to write default page.tmpl, ", err)
-	}
-	f.Close()
 
-	f, err = os.OpenFile(domainDir+rootDomainDir+"/dir.tmpl", os.O_WRONLY|os.O_CREATE, 0755)
-	if err != nil {
-		log.Print("Setup: Failed to create default dir.tmpl, ", err)
-	}
-	_, err = f.Write([]byte(directoryTemplate))
-	if err != nil {
-		log.Print("Setup: Failed to write default dir.tmpl, ", err)
-	}
-	f.Close()
+	// create files
+	// todo: if directory wasn't successfully made, don't try to write file
+	for key, val := range pages {
+		full := filepath.Join(domainRoot, key)
+		f, err := os.OpenFile(full, os.O_WRONLY | os.O_CREATE, 0755)
 
-	err = os.Mkdir(domainDir+rootDomainDir+defaultStaticDir, 0755)
-	if err != nil {
-		log.Print("Setup: Failed to create directory, ", err)
+		if err != nil {
+			log.Printf("setup: failed to create default '%s'", full)
+
+			// don't try to write if file wasn't made
+			continue
+		}
+
+		if _, err := f.WriteString(val); err != nil {
+			log.Printf("setup: failed to write default '%s'", full)
+		}
+
+		f.Close()
 	}
 }
 
@@ -163,59 +167,3 @@ func Serve(port, proto string) error {
 	}
 	return errors.New("Serve: Protocol not understood")
 }
-
-const pageTemplate = `
-<!DOCTYPE html>
-<html>
-    <head>
-	<meta charset="utf-8">
-	<link rel="stylesheet" href="https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"/>
-	<title>{{.Title}}</title>
-    </head>
-    <body class="bg-washed-yellow pa4">
-	<div class="flex flex-wrap justify-around">
-	    <div class="w-40 mw5 bg-washed-green bw2 ba pa2 ma3 h-25">
-		<ul class="list">
-		    {{range $key, $element := .Sidebar}}
-		    <div>
-			<h3 class="f4 measure-narrow"><a href="{{$key}}">{{$key}}</a></h3>
-			<ul>
-			{{range $element}}
-			    <li class="f5 measure-narrow"><a href="{{.Path}}">{{.Title}}</a></li>
-			{{end}}
-			</ul>
-		    </div>
-		    {{end}}
-		</ul>
-	    </div>
-	    <div class="w-80 ba bw2 pa2 ma3 bg-washed-green">
-		<h3 class="f1 measure">{{.Title}}</h3>
-		{{.Body}}
-	    </div>
-	</div>
-    </body>
-</html>
-`
-
-const directoryTemplate = `
-<!DOCTYPE html>
-<html>
-    <head>
-	<meta charset="utf-8">
-	<link rel="stylesheet" href="https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css"/>
-	<title>{{.Title}}</title>
-    </head>
-    <body class="bg-washed-yellow pa4">
-	<div class="ba4 bw2 pa2 ma3 bg-washed-green">
-	    <h3 class="f1 measure">{{.Title}}</h3>
-	    <ul>
-		 {{range $key, $element := .Sidebar}}
-		    {{range $element}}
-			<li class="f5 measure-narrow"><a href="{{.Path}}">{{.Title}}</a></li>
-		    {{end}}
-		{{end}}
-	    </ul>
-	</div>
-    </body>
-</html>
-`

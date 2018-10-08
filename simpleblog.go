@@ -4,53 +4,56 @@ import (
 	"flag"
 	"fmt"
 	"github.com/majiru/simpleblog/lib"
-	"strconv"
+	"log"
+	"os"
 )
 
-const usage = `
-simpleblog  {init, run}
-Commands:
-    init: Creates program dirs
-    run: Serve content
-`
-
 func main() {
-	var port = flag.Int("port", 8080, "Port to run service on")
-	var protocol = flag.String("protocol", "http", "http or fcgi")
+	port := flag.Int("p", 8080, "Port to run service on")
+	protocol := flag.String("r", "http", "http or fcgi")
 
-	flag.IntVar(port, "p", *port, "Port to run service on")
-	flag.StringVar(protocol, "r", *protocol, "http or fcgi")
+	flag.Usage = printUsage
 	flag.Parse()
 
-	needsHelp := false
-
-	if len(flag.Args()) < 1 {
-		needsHelp = true
-	}
-
-	for _, arg := range flag.Args() {
-		switch arg {
-		case "init":
-			simpleblog.Setup()
-		case "run":
-			if err := simpleblog.Serve(`:`+strconv.Itoa(*port), *protocol); err != nil {
-				needsHelp = true
-				fmt.Println(err.Error())
-			}
-		default:
-			needsHelp = true
-			fmt.Println("Arg: '" + arg + "' not understood")
-		}
-	}
-
-	if needsHelp {
+	if flag.NArg() < 1 {
 		printUsage()
+		return
 	}
 
+	arg := flag.Args()[0]
+
+	switch arg {
+	case "init":
+		simpleblog.Setup()
+
+		if flag.NArg() < 2 || flag.Args()[1] != "run" {
+			break
+		}
+
+		// handle case of 'simpleblog init run'
+		fallthrough
+	case "run":
+		tailport := fmt.Sprintf(":%d", *port)
+		if err := simpleblog.Serve(tailport, *protocol); err != nil {
+			log.Fatal(err)
+		}
+	default:
+		log.Fatalf("arg '%s' not understood", arg)
+	}
 }
 
 func printUsage() {
-	fmt.Println(usage)
-	fmt.Println("Flags:")
+	const usage = `simpleblog [arguments] {init, run}
+
+Commands:
+    init: Creates program dirs
+    run:  Serve content
+
+Flags:`
+
+	fmt.Fprintln(os.Stderr, usage)
+
 	flag.PrintDefaults()
+
+	os.Exit(2)
 }
