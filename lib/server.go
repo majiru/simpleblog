@@ -48,7 +48,7 @@ func newWebfs(path string) (webfs, error) {
 
 //Maps request to file system and serves content
 func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Access: " + r.URL.Path + " by " + r.RemoteAddr)
+	fmt.Println("Access: " + r.Host + r.URL.Path + " by " + r.RemoteAddr)
 	addr := r.Host
 	//If the user is connecting on a non standard port
 	if strings.Contains(addr, ":") {
