@@ -18,7 +18,9 @@ type mediafs struct {
 }
 
 func newMediafs(root string) webfs {
-	return &mediafs{root}
+	contentDir := filepath.Join(root, "media")
+	os.Mkdir(contentDir, 0755)
+	return &mediafs{contentDir}
 }
 
 func (mfs *mediafs) Read(request string) (io.ReadSeeker, error) {
