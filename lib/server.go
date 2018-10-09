@@ -2,6 +2,7 @@ package simpleblog
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -22,7 +23,7 @@ type webfs interface {
 type sectionMux map[string]webfs
 
 const (
-	domainDir = "./domains/"
+	domainDir     = "./domains/"
 	rootDomainDir = "localhost/"
 )
 
@@ -47,6 +48,7 @@ func newWebfs(path string) (webfs, error) {
 
 //Maps request to file system and serves content
 func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Access: " + r.URL.Path + " by " + r.RemoteAddr)
 	addr := r.Host
 	//If the user is connecting on a non standard port
 	if strings.Contains(addr, ":") {
@@ -105,16 +107,16 @@ func (sm sectionMux) Parse(rootPath string) error {
 func Setup() {
 	domainRoot := filepath.Join(domainDir, rootDomainDir)
 
-	dirs := []string {
+	dirs := []string{
 		defaultSourceDir,
 		defaultStaticDir,
 	}
 
 	pages := map[string]string{
 		filepath.Join(defaultSourceDir, "index.md"): indexMessage,
-		"page.tmpl": pageTemplate,
-		"dir.tmpl": directoryTemplate,
-		"type": typeDefault,
+		"page.tmpl":                                 pageTemplate,
+		"dir.tmpl":                                  directoryTemplate,
+		"type":                                      typeDefault,
 	}
 
 	// create directories
@@ -129,7 +131,7 @@ func Setup() {
 	// todo: if directory wasn't successfully made, don't try to write file
 	for key, val := range pages {
 		full := filepath.Join(domainRoot, key)
-		f, err := os.OpenFile(full, os.O_WRONLY | os.O_CREATE, 0755)
+		f, err := os.OpenFile(full, os.O_WRONLY|os.O_CREATE, 0755)
 
 		if err != nil {
 			log.Printf("setup: failed to create default '%s'", full)
