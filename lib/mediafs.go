@@ -59,7 +59,7 @@ func (mfs *mediafs) openDir(path string) (io.ReadSeeker, error) {
 	}
 	p.Sidebar = directory
 	var out bytes.Buffer
-	t, err := template.New("directory").ParseFiles(defaultDirTempl)
+	t, err := template.ParseFiles(defaultDirTempl)
 	if err != nil {
 		return nil, errors.New("Template not found")
 	}
