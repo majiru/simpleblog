@@ -16,11 +16,13 @@ import (
 	"time"
 )
 
-type webfs interface {
-	Read(requestFile string) (io.ReadSeeker, error)
-}
+type (
+	webfs interface {
+		Read(requestFile string) (io.ReadSeeker, error)
+	}
 
-type sectionMux map[string]webfs
+	sectionMux map[string]webfs
+)
 
 const (
 	domainDir     = "./domains/"
@@ -34,6 +36,11 @@ var configTranslator = map[string]func(string) webfs{
 }
 
 func newWebfs(path string) (webfs, error) {
+	filepath.Clean(path)
+	path = filepath.Join(domainDir, path)
+	if _, err := os.Stat(path); err != nil {
+		return nil, errors.New("File not found")
+	}
 	read, err := ioutil.ReadFile(filepath.Join(path, "/type"))
 	if err != nil {
 		return nil, errors.New("type file not found: " + err.Error())
@@ -50,12 +57,16 @@ func newWebfs(path string) (webfs, error) {
 func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Access: " + r.Host + r.URL.Path + " by " + r.RemoteAddr)
 	addr := r.Host
+
 	//If the user is connecting on a non standard port
 	if strings.Contains(addr, ":") {
 		addr = strings.Split(addr, ":")[0]
 	}
+	if strings.HasPrefix(addr, "www.") {
+		addr = strings.Split(addr, "www.")[1]
+	}
 
-	if fs := sm[addr+"/"]; fs != nil {
+	if fs := sm.Lookup(addr + "/"); fs != nil {
 		requestedFile := r.URL.Path
 		requestedFile = filepath.Join("/", filepath.FromSlash(path.Clean("/"+requestedFile)))
 		content, err := fs.Read(requestedFile)
@@ -76,31 +87,24 @@ func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.NotFoundHandler().ServeHTTP(w, r)
 }
 
-//Parse creates sectionMux from directory
-func (sm sectionMux) Parse(rootPath string) error {
-	_, dirs, err := readDir(rootPath)
-	if err != nil {
-		return errors.New("Parse: Could not read domain directory\n" + err.Error())
+func (sm sectionMux) Lookup(host string) webfs {
+	if fs := sm[host]; fs != nil {
+		return fs
 	}
-
-	for _, d := range dirs {
-		if strings.HasPrefix(d, "www.") {
-			bareHostName := strings.Split(d, "www.")[1]
-			newfs, err := newWebfs(rootPath + d)
-			if err != nil {
-				return errors.New("Issue creating webfs at " + rootPath + d + " : " + err.Error())
-			}
-			sm[bareHostName] = newfs
-			sm[d] = newfs
-			continue
-		}
-		newfs, err := newWebfs(rootPath + d)
-		if err != nil {
-			return errors.New("Issue creating webfs at " + rootPath + d + " : " + err.Error())
-		}
-		sm[d] = newfs
+	if fs, err := sm.Parse(host); err == nil {
+		return fs
 	}
 	return nil
+}
+
+//Parse adds webfs from directory
+func (sm sectionMux) Parse(path string) (webfs, error) {
+	newfs, err := newWebfs(path)
+	if err != nil {
+		return nil, errors.New("Issue creating webfs at " + path + " : " + err.Error())
+	}
+	sm[path] = newfs
+	return newfs, nil
 }
 
 //Setup does a first time initalization of the directories
@@ -152,11 +156,6 @@ func Setup() {
 //currently supported are fcgi(fastcgi) and http
 func Serve(port, proto string) error {
 	sm := make(sectionMux)
-	err := sm.Parse(domainDir)
-	if err != nil {
-		return errors.New("Serve: Could not parse sections\n" + err.Error())
-	}
-
 	switch proto {
 	case "http":
 		log.Fatal(http.ListenAndServe(port, sm))
