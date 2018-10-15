@@ -2,6 +2,7 @@ package simpleblog
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"strings"
 )
@@ -24,7 +25,7 @@ func (p *page) cleanTitle() {
 func readDir(inputDir string) (files, dirs []string, outErr error) {
 	infoFiles, err := ioutil.ReadDir(inputDir)
 	if err != nil {
-		outErr = errors.New("readDir: Could not read dir\n" + err.Error())
+		outErr = fmt.Errorf("readDir: Could not read dir\n%s", err)
 		return
 	}
 	for _, f := range infoFiles {

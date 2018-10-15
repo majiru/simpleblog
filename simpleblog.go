@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/majiru/simpleblog/lib"
 	"log"
 	"os"
+
+	"github.com/majiru/simpleblog/lib"
 )
 
 func main() {
@@ -24,7 +25,11 @@ func main() {
 
 	switch arg {
 	case "init":
-		simpleblog.Setup()
+		err := simpleblog.Setup()
+
+		if err != nil {
+			log.Fatal(err)
+		}
 
 		if flag.NArg() < 2 || flag.Args()[1] != "run" {
 			break
@@ -51,7 +56,9 @@ Commands:
 
 Flags:`
 
-	fmt.Fprintln(os.Stderr, usage)
+	if _, err := fmt.Fprintln(os.Stderr, usage); err != nil {
+		log.Fatal(err)
+	}
 
 	flag.PrintDefaults()
 

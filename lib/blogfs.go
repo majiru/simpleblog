@@ -3,19 +3,22 @@ package simpleblog
 import (
 	"bytes"
 	"errors"
-	"gopkg.in/russross/blackfriday.v2"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"gopkg.in/russross/blackfriday.v2"
 )
 
-const defaultSourceDir = "source"
-const defaultStaticDir = "static"
-const templateName = "page.tmpl"
-const defaultTemplate = domainDir + templateName
+const (
+	defaultSourceDir = "source"
+	defaultStaticDir = "static"
+	templateName     = "page.tmpl"
+	defaultTemplate  = domainDir + templateName
+)
 
 type blogfs struct {
 	sourceDir    string
@@ -23,17 +26,27 @@ type blogfs struct {
 	templateFile string
 }
 
-func newBfs(path string) webfs {
+func newBfs(path string) (webfs, error) {
 	source := filepath.Join(path, defaultSourceDir)
 	static := filepath.Join(path, defaultStaticDir)
+
+	dirs := []string{source, static}
+
 	templ := filepath.Join(path, templateName)
+
 	bfs := &blogfs{source, static, defaultTemplate}
+
 	if _, err := os.Stat(templ); err == nil {
 		bfs.templateFile = templ
 	}
-	os.Mkdir(path+defaultSourceDir, 0755)
-	os.Mkdir(path+defaultStaticDir, 0755)
-	return bfs
+
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0644); err != nil {
+			return nil, err
+		}
+	}
+
+	return bfs, nil
 }
 
 func (bfs *blogfs) Read(request string) (io.ReadSeeker, error) {
@@ -46,7 +59,9 @@ func (bfs *blogfs) Read(request string) (io.ReadSeeker, error) {
 
 		_, shortName := filepath.Split(request)
 		p, _ := newPage(shortName, request, string(blackfriday.Run(content)))
-		bfs.getSiblings(p)
+		if err := bfs.getSiblings(p); err != nil {
+			return nil, err
+		}
 		t, err := template.ParseFiles(bfs.templateFile)
 		if err != nil {
 			return nil, errors.New("Template file not found")

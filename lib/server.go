@@ -1,6 +1,7 @@
 package simpleblog
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"net/http/fcgi"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"strings"
@@ -29,33 +31,42 @@ const (
 	rootDomainDir = "localhost/"
 )
 
+// ErrFileNotFound occurs when a requested file is missing
+var ErrFileNotFound = errors.New("File not found")
+
 //configTranslator maps strings to correct fs constructors
-var configTranslator = map[string]func(string) webfs{
+var configTranslator = map[string]func(string) (webfs, error){
 	"blog":  newBfs,
 	"media": newMediafs,
 }
 
 func newWebfs(path string) (webfs, error) {
 	filepath.Clean(path)
+
 	path = filepath.Join(domainDir, path)
+
 	if _, err := os.Stat(path); err != nil {
-		return nil, errors.New("File not found")
+		return nil, ErrFileNotFound
 	}
+
 	read, err := ioutil.ReadFile(filepath.Join(path, "/type"))
+
 	if err != nil {
-		return nil, errors.New("type file not found: " + err.Error())
+		return nil, fmt.Errorf("type file not found: %s", err)
 	}
+
 	conf := strings.TrimSuffix(string(read), "\n")
 	constructor := configTranslator[conf]
+
 	if constructor == nil {
-		return nil, errors.New("Type " + string(conf) + " is not defined")
+		return nil, fmt.Errorf("Type %s is not defined", conf)
 	}
-	return constructor(path), nil
+	return constructor(path)
 }
 
 //Maps request to file system and serves content
 func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Access: " + r.Host + r.URL.Path + " by " + r.RemoteAddr)
+	log.Printf("Access: %s%s by %s", r.Host, r.URL.Path, r.RemoteAddr)
 	addr := r.Host
 
 	//If the user is connecting on a non standard port
@@ -71,8 +82,8 @@ func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		requestedFile = filepath.Join("/", filepath.FromSlash(path.Clean("/"+requestedFile)))
 		content, err := fs.Read(requestedFile)
 		if err != nil {
-			log.Println("Error: " + err.Error() + " for request " + r.URL.Path)
-			if err.Error() == "File not found" {
+			log.Printf("Error: %s for request %s", err, r.URL.Path)
+			if err == ErrFileNotFound {
 				http.NotFoundHandler().ServeHTTP(w, r)
 				return
 			}
@@ -100,15 +111,18 @@ func (sm sectionMux) Lookup(host string) webfs {
 //Parse adds webfs from directory
 func (sm sectionMux) Parse(path string) (webfs, error) {
 	newfs, err := newWebfs(path)
+
 	if err != nil {
-		return nil, errors.New("Issue creating webfs at " + path + " : " + err.Error())
+		return nil, fmt.Errorf("Issue creating webfs at %s: %s", path, err)
 	}
+
 	sm[path] = newfs
+
 	return newfs, nil
 }
 
 //Setup does a first time initalization of the directories
-func Setup() {
+func Setup() error {
 	domainRoot := filepath.Join(domainDir, rootDomainDir)
 
 	dirs := []string{
@@ -127,44 +141,75 @@ func Setup() {
 	for _, dir := range dirs {
 		full := filepath.Join(domainRoot, dir)
 		if err := os.MkdirAll(full, 0755); err != nil {
-			log.Printf("setup: failed to create directory '%s'", full)
+			return fmt.Errorf("setup: failed to create directory '%s'", full)
 		}
 	}
 
 	// create files
-	// todo: if directory wasn't successfully made, don't try to write file
 	for key, val := range pages {
 		full := filepath.Join(domainRoot, key)
-		f, err := os.OpenFile(full, os.O_WRONLY|os.O_CREATE, 0755)
+		f, err := os.OpenFile(full, os.O_WRONLY|os.O_CREATE, 0644)
 
 		if err != nil {
-			log.Printf("setup: failed to create default '%s'", full)
-
-			// don't try to write if file wasn't made
-			continue
+			return fmt.Errorf("setup: failed to create default '%s'", full)
 		}
 
 		if _, err := f.WriteString(val); err != nil {
-			log.Printf("setup: failed to write default '%s'", full)
+			return fmt.Errorf("setup: failed to write default '%s'", full)
 		}
 
-		f.Close()
+		if err := f.Close(); err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 //Serve starts a listener with a given port on the given protocol
 //currently supported are fcgi(fastcgi) and http
 func Serve(port, proto string) error {
-	sm := make(sectionMux)
+	mux := make(sectionMux)
 	switch proto {
 	case "http":
-		log.Fatal(http.ListenAndServe(port, sm))
+		err := start(port, mux)
+		if err == nil {
+			log.Println("\nServer shutdown gracefully")
+		}
+		return err
 	case "fcgi", "fastcgi":
 		l, err := net.Listen("tcp", port)
 		if err != nil {
-			return errors.New("Serve: Failed to start FCGI client\n" + err.Error())
+			return fmt.Errorf("Serve: Failed to start FCGI client\n%s", err)
 		}
-		log.Fatal(fcgi.Serve(l, sm))
+		return fcgi.Serve(l, mux)
+	default:
+		return errors.New("Serve: Protocol not understood")
 	}
-	return errors.New("Serve: Protocol not understood")
+}
+
+func start(port string, mux http.Handler) error {
+	svr := &http.Server{
+		Addr:    port,
+		Handler: mux,
+	}
+
+	errors := make(chan error, 2)
+
+	go func() {
+		errors <- svr.ListenAndServe()
+	}()
+
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt)
+		errors <- fmt.Errorf("%s", <-c)
+		close(c)
+	}()
+
+	halt := make(chan os.Signal, 1)
+	signal.Notify(halt, os.Interrupt)
+	<-errors
+
+	return svr.Shutdown(context.TODO())
 }

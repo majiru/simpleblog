@@ -11,16 +11,21 @@ import (
 )
 
 const dirTemplName = "dir.tmpl"
-const defaultDirTempl = domainDir + dirTemplName
+
+var defaultDirTempl = filepath.Join(domainDir, dirTemplName)
 
 type mediafs struct {
 	root string
 }
 
-func newMediafs(root string) webfs {
+func newMediafs(root string) (webfs, error) {
 	contentDir := filepath.Join(root, "media")
-	os.Mkdir(contentDir, 0755)
-	return &mediafs{contentDir}
+
+	if err := os.Mkdir(contentDir, 0644); err != nil {
+		return nil, err
+	}
+
+	return &mediafs{contentDir}, nil
 }
 
 func (mfs *mediafs) Read(request string) (io.ReadSeeker, error) {
