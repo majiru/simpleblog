@@ -24,9 +24,12 @@ type blogfs struct {
 }
 
 func newBfs(path string) webfs {
-	bfs := &blogfs{path + defaultSourceDir, path + defaultStaticDir, defaultTemplate}
-	if fd, err := os.Stat(path + templateName); err == nil {
-		bfs.templateFile = path + fd.Name()
+	source := filepath.Join(path, defaultSourceDir)
+	static := filepath.Join(path, defaultStaticDir)
+	templ := filepath.Join(path, templateName)
+	bfs := &blogfs{source, static, defaultTemplate}
+	if _, err := os.Stat(templ); err == nil {
+		bfs.templateFile = templ
 	}
 	os.Mkdir(path+defaultSourceDir, 0755)
 	os.Mkdir(path+defaultStaticDir, 0755)

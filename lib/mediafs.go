@@ -18,13 +18,16 @@ type mediafs struct {
 }
 
 func newMediafs(root string) webfs {
-	return &mediafs{root}
+	contentDir := filepath.Join(root, "media")
+	os.Mkdir(contentDir, 0755)
+	return &mediafs{contentDir}
 }
 
 func (mfs *mediafs) Read(request string) (io.ReadSeeker, error) {
-	if fi, err := os.Stat(mfs.root + request); err == nil {
+	path := filepath.Join(mfs.root, request)
+	if fi, err := os.Stat(path); err == nil {
 		if !fi.IsDir() {
-			if fd, err := os.Open(mfs.root + request); err == nil {
+			if fd, err := os.Open(path); err == nil {
 				return fd, err
 			}
 		}
@@ -47,17 +50,16 @@ func (mfs *mediafs) openDir(path string) (io.ReadSeeker, error) {
 	directory := make(map[string][]page)
 	directory["root"] = []page{}
 	for _, f := range files {
-		filepath.Join(path, "/")
-		listing, _ := newPage(f, path+f)
+		listing, _ := newPage(f, filepath.Join(path, f))
 		directory["root"] = append(directory["root"], *listing)
 	}
 	for _, d := range dirs {
-		listing, _ := newPage(d, path+d)
+		listing, _ := newPage(d, filepath.Join(path, d))
 		directory["root"] = append(directory["root"], *listing)
 	}
 	p.Sidebar = directory
 	var out bytes.Buffer
-	t, err := template.New("directory").ParseFiles(defaultDirTempl)
+	t, err := template.ParseFiles(defaultDirTempl)
 	if err != nil {
 		return nil, errors.New("Template not found")
 	}
