@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/majiru/simpleblog/lib"
+	simpleblog "github.com/majiru/simpleblog/lib"
 )
 
 func main() {

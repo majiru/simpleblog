@@ -66,7 +66,7 @@ func newWebfs(path string) (webfs, error) {
 
 //Maps request to file system and serves content
 func (sm sectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Access: %s%s by %s", r.Host, r.URL.Path, r.RemoteAddr)
+	fmt.Printf("Access: %s%s by %s\n", r.Host, r.URL.Path, r.RemoteAddr)
 	addr := r.Host
 
 	//If the user is connecting on a non standard port
@@ -174,7 +174,7 @@ func Serve(port, proto string) error {
 	case "http":
 		err := start(port, mux)
 		if err == nil {
-			log.Println("\nServer shutdown gracefully")
+			fmt.Println("Server shutdown gracefully")
 		}
 		return err
 	case "fcgi", "fastcgi":
