@@ -14,12 +14,7 @@ type Webfs interface {
 	Read(requestFile string) (io.ReadSeeker, error)
 }
 
-const (
-	domainDir     = "./domains/"
-	rootDomainDir = "localhost/"
-	indexMessage  = "# Hello from Simpleblog space\n\nThis is your home page.\n"
-	typeDefault   = "blog\n"
-)
+const domainDir = "./domains/"
 
 //FsMap maps strings to correct fs constructors
 type FsMap = map[string]func(string) Webfs

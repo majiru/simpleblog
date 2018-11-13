@@ -15,12 +15,12 @@ import (
 )
 
 const (
-	domainDir     = "./domains/"
-	rootDomainDir = "localhost/"
+	domainDir        = "./domains/"
+	rootDomainDir    = "localhost/"
+	defaultSourceDir = "source"
+	defaultStaticDir = "static"
+	templateName     = "page.tmpl"
 )
-const defaultSourceDir = "source"
-const defaultStaticDir = "static"
-const templateName = "page.tmpl"
 
 var fsmap = webfs.FsMap{
 	"blog":  blogfs.NewBfs,

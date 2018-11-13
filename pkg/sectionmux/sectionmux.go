@@ -18,13 +18,6 @@ type SectionMux struct {
 	fsMap webfs.FsMap
 }
 
-const (
-	domainDir     = "./domains/"
-	rootDomainDir = "localhost/"
-	indexMessage  = "# Hello from Simpleblog space\n\nThis is your home page.\n"
-	typeDefault   = "blog\n"
-)
-
 //NewSectionMux initializes a new SectionMux
 func NewSectionMux(fsmap webfs.FsMap) SectionMux {
 	mux := make(map[string]webfs.Webfs)
