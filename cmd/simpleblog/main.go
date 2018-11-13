@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/majiru/simpleblog/lib"
+	"github.com/majiru/simpleblog"
 	"log"
 	"os"
 )

@@ -1,8 +1,10 @@
-package simpleblog
+package blogfs
 
 import (
 	"bytes"
 	"errors"
+	"github.com/majiru/simpleblog/pkg/page"
+	"github.com/majiru/simpleblog/pkg/webfs"
 	"gopkg.in/russross/blackfriday.v2"
 	"io"
 	"io/ioutil"
@@ -15,7 +17,6 @@ import (
 const defaultSourceDir = "source"
 const defaultStaticDir = "static"
 const templateName = "page.tmpl"
-const defaultTemplate = domainDir + templateName
 
 type blogfs struct {
 	sourceDir    string
@@ -23,11 +24,13 @@ type blogfs struct {
 	templateFile string
 }
 
-func newBfs(path string) webfs {
+//NewBfs creates a new blogfs webfs
+func NewBfs(path string) webfs.Webfs {
 	source := filepath.Join(path, defaultSourceDir)
 	static := filepath.Join(path, defaultStaticDir)
 	templ := filepath.Join(path, templateName)
-	bfs := &blogfs{source, static, defaultTemplate}
+	globalTempl := filepath.Join(path, "..", templateName)
+	bfs := &blogfs{source, static, globalTempl}
 	if _, err := os.Stat(templ); err == nil {
 		bfs.templateFile = templ
 	}
@@ -45,7 +48,7 @@ func (bfs *blogfs) Read(request string) (io.ReadSeeker, error) {
 		content = blackfriday.Run(content)
 
 		_, shortName := filepath.Split(request)
-		p, _ := newPage(shortName, request, string(blackfriday.Run(content)))
+		p, _ := page.NewPage(shortName, request, string(blackfriday.Run(content)))
 		bfs.getSiblings(p)
 		t, err := template.ParseFiles(bfs.templateFile)
 		if err != nil {
@@ -67,24 +70,24 @@ func (bfs *blogfs) Read(request string) (io.ReadSeeker, error) {
 	return nil, errors.New("File not found")
 }
 
-func (bfs *blogfs) openDir(path string) (pages, dirpages []page, err error) {
-	files, dirs, err := readDir(bfs.sourceDir + path)
+func (bfs *blogfs) openDir(path string) (pages, dirpages []page.Page, err error) {
+	files, dirs, err := page.ReadDir(bfs.sourceDir + path)
 	if err != nil {
 		return
 	}
 	for _, f := range files {
-		p, _ := newPage(f, path+f)
+		p, _ := page.NewPage(f, path+f)
 		pages = append(pages, *p)
 	}
 	for _, d := range dirs {
-		p, _ := newPage(d, path+d)
+		p, _ := page.NewPage(d, path+d)
 		dirpages = append(dirpages, *p)
 	}
 	return
 }
 
-func (bfs *blogfs) getSiblings(p *page) error {
-	var siblings = make(map[string][]page)
+func (bfs *blogfs) getSiblings(p *page.Page) error {
+	var siblings = make(map[string][]page.Page)
 	dir, _ := filepath.Split(p.Path)
 	dirs := strings.Split(dir, "/")
 	dirs = dirs[:len(dirs)-1]

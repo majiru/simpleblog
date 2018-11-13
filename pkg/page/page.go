@@ -1,4 +1,4 @@
-package simpleblog
+package page
 
 import (
 	"errors"
@@ -6,14 +6,15 @@ import (
 	"strings"
 )
 
-type page struct {
+//Page acts as way to organize data before being sent to a template
+type Page struct {
 	Title   string
 	Path    string
 	Body    string
-	Sidebar map[string][]page
+	Sidebar map[string][]Page
 }
 
-func (p *page) cleanTitle() {
+func (p *Page) cleanTitle() {
 	p.Title = strings.Replace(p.Title, "_", " ", -1)
 	p.Title = strings.Title(strings.Split(p.Title, ".md")[0])
 	if p.Title == "Index" {
@@ -21,7 +22,8 @@ func (p *page) cleanTitle() {
 	}
 }
 
-func readDir(inputDir string) (files, dirs []string, outErr error) {
+//ReadDir reads entries in directory and parses them out to folders and files
+func ReadDir(inputDir string) (files, dirs []string, outErr error) {
 	infoFiles, err := ioutil.ReadDir(inputDir)
 	if err != nil {
 		outErr = errors.New("readDir: Could not read dir\n" + err.Error())
@@ -37,8 +39,9 @@ func readDir(inputDir string) (files, dirs []string, outErr error) {
 	return
 }
 
-func newPage(args ...string) (*page, error) {
-	p := &page{}
+//NewPage creates a new Page struct
+func NewPage(args ...string) (*Page, error) {
+	p := &Page{}
 	switch len(args) {
 	case 3:
 		p.Body = args[2]
