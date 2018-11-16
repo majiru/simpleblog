@@ -4,9 +4,13 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 //Webfs defines a simple interface to be used for serving web pages
@@ -36,4 +40,26 @@ func NewWebfs(path string, fsmap FsMap) (Webfs, error) {
 		return nil, errors.New("Type " + string(conf) + " is not defined")
 	}
 	return constructor(path), nil
+}
+
+//Server is a struct to allow Webfs to be used with net/http
+type Server struct {
+	Wfs Webfs
+}
+
+func (fs Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	requestedFile := r.URL.Path
+	requestedFile = filepath.Join("/", filepath.FromSlash(path.Clean("/"+requestedFile)))
+	content, err := fs.Wfs.Read(requestedFile)
+	if err != nil {
+		log.Println("Error: " + err.Error() + " for request " + r.URL.Path)
+		if err.Error() == "File not found" {
+			http.NotFoundHandler().ServeHTTP(w, r)
+			return
+		}
+		http.Error(w, "Internal server error", 500)
+		return
+	}
+	http.ServeContent(w, r, requestedFile, time.Now(), content)
+	return
 }

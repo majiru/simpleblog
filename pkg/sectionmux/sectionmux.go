@@ -6,10 +6,7 @@ import (
 	"github.com/majiru/simpleblog/pkg/webfs"
 	"log"
 	"net/http"
-	"path"
-	"path/filepath"
 	"strings"
-	"time"
 )
 
 //SectionMux serves as a way to map webfs to sub domains
@@ -38,19 +35,7 @@ func (sm SectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Println(addr + "/")
 	if fs := sm.Lookup(addr + "/"); fs != nil {
-		requestedFile := r.URL.Path
-		requestedFile = filepath.Join("/", filepath.FromSlash(path.Clean("/"+requestedFile)))
-		content, err := fs.Read(requestedFile)
-		if err != nil {
-			log.Println("Error: " + err.Error() + " for request " + r.URL.Path)
-			if err.Error() == "File not found" {
-				http.NotFoundHandler().ServeHTTP(w, r)
-				return
-			}
-			http.Error(w, "Internal server error", 500)
-			return
-		}
-		http.ServeContent(w, r, requestedFile, time.Now(), content)
+		webfs.Server{Wfs: fs}.ServeHTTP(w, r)
 		return
 	}
 
