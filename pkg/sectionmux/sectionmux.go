@@ -33,7 +33,6 @@ func (sm SectionMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strings.HasPrefix(addr, "www.") {
 		addr = strings.Split(addr, "www.")[1]
 	}
-	fmt.Println(addr + "/")
 	if fs := sm.Lookup(addr + "/"); fs != nil {
 		webfs.Server{Wfs: fs}.ServeHTTP(w, r)
 		return

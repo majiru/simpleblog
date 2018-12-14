@@ -3,6 +3,7 @@ package blogfs
 import (
 	"bytes"
 	"errors"
+	"github.com/majiru/simpleblog/pkg/basicfs"
 	"github.com/majiru/simpleblog/pkg/page"
 	"github.com/majiru/simpleblog/pkg/webfs"
 	"gopkg.in/russross/blackfriday.v2"
@@ -71,7 +72,7 @@ func (bfs *blogfs) Read(request string) (io.ReadSeeker, error) {
 }
 
 func (bfs *blogfs) openDir(path string) (pages, dirpages []page.Page, err error) {
-	files, dirs, err := page.ReadDir(bfs.sourceDir + path)
+	files, dirs, err := basicfs.List(bfs.sourceDir + path)
 	if err != nil {
 		return
 	}
@@ -84,6 +85,11 @@ func (bfs *blogfs) openDir(path string) (pages, dirpages []page.Page, err error)
 		dirpages = append(dirpages, *p)
 	}
 	return
+}
+
+func findSiblings(p *page.Page) error {
+
+	return nil
 }
 
 func (bfs *blogfs) getSiblings(p *page.Page) error {

@@ -2,7 +2,6 @@ package page
 
 import (
 	"errors"
-	"io/ioutil"
 	"strings"
 )
 
@@ -20,23 +19,6 @@ func (p *Page) cleanTitle() {
 	if p.Title == "Index" {
 		p.Title = "Home"
 	}
-}
-
-//ReadDir reads entries in directory and parses them out to folders and files
-func ReadDir(inputDir string) (files, dirs []string, outErr error) {
-	infoFiles, err := ioutil.ReadDir(inputDir)
-	if err != nil {
-		outErr = errors.New("readDir: Could not read dir\n" + err.Error())
-		return
-	}
-	for _, f := range infoFiles {
-		if f.IsDir() {
-			dirs = append(dirs, f.Name()+"/")
-		} else {
-			files = append(files, f.Name())
-		}
-	}
-	return
 }
 
 //NewPage creates a new Page struct
