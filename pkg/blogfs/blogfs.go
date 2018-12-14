@@ -87,11 +87,6 @@ func (bfs *blogfs) openDir(path string) (pages, dirpages []page.Page, err error)
 	return
 }
 
-func findSiblings(p *page.Page) error {
-
-	return nil
-}
-
 func (bfs *blogfs) getSiblings(p *page.Page) error {
 	var siblings = make(map[string][]page.Page)
 	dir, _ := filepath.Split(p.Path)
