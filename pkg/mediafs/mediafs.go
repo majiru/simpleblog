@@ -24,7 +24,7 @@ type mediafs struct {
 func NewMediafs(root string) webfs.Webfs {
 	contentDir := filepath.Join(root, "media")
 	templ := filepath.Join(root, dirTemplName)
-	if _, err := os.Stat(templ); err == nil {
+	if _, err := os.Stat(templ); err != nil {
 		templ = filepath.Join(root, "..", dirTemplName)
 	}
 	os.Mkdir(contentDir, 0755)
@@ -43,15 +43,15 @@ func (mfs *mediafs) Read(request string) (io.ReadSeeker, error) {
 		return os.Open(path)
 	}
 
-	if out, err := mfs.openDir(request); err == nil {
-		return out, nil
+	out, err := mfs.openDir(request)
+	if err != nil {
+		return nil, err
 	}
-
-	return nil, os.ErrNotExist
+	return out, nil
 }
 
 func (mfs *mediafs) openDir(path string) (io.ReadSeeker, error) {
-	files, dirs, err := basicfs.List(mfs.root + path)
+	files, dirs, err := basicfs.List(filepath.Join(mfs.root, path))
 	if err != nil {
 		return nil, err
 	}
