@@ -27,9 +27,9 @@ type blogfs struct {
 
 //NewBfs creates a new blogfs webfs
 func NewBfs(path string) webfs.Webfs {
-	source := filepath.Join(path, defaultSourceDir)
-	static := filepath.Join(path, defaultStaticDir)
-	templ := filepath.Join(path, templateName)
+	source := filepath.Join(path, "/", defaultSourceDir)
+	static := filepath.Join(path, "/", defaultStaticDir)
+	templ := filepath.Join(path, "/", templateName)
 	globalTempl := filepath.Join(path, "..", templateName)
 	bfs := &blogfs{source, static, globalTempl}
 	if _, err := os.Stat(templ); err == nil {
