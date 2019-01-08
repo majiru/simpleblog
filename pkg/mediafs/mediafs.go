@@ -33,20 +33,21 @@ func NewMediafs(root string) webfs.Webfs {
 
 func (mfs *mediafs) Read(request string) (io.ReadSeeker, error) {
 	path := filepath.Join(mfs.root, request)
-	if fi, err := os.Stat(path); err == nil {
-		if !fi.IsDir() {
-			if fd, err := os.Open(path); err == nil {
-				return fd, err
-			}
-		}
-		out, err := mfs.openDir(request)
-		if err != nil {
-			return strings.NewReader(err.Error()), nil
-		}
-		return out, nil
+	fi, err := os.Stat(path)
 
+	if err != nil {
+		return nil, err
 	}
-	return nil, errors.New("File not found")
+
+	if !fi.IsDir() {
+		return os.Open(path)
+	}
+
+	if out, err := mfs.openDir(request); err == nil {
+		return out, nil
+	}
+
+	return nil, os.ErrNotExist
 }
 
 func (mfs *mediafs) openDir(path string) (io.ReadSeeker, error) {

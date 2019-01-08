@@ -53,7 +53,7 @@ func (fs Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	content, err := fs.Wfs.Read(requestedFile)
 	if err != nil {
 		log.Println("Error: " + err.Error() + " for request " + r.URL.Path)
-		if err.Error() == "File not found" {
+		if err == os.ErrNotExist {
 			http.NotFoundHandler().ServeHTTP(w, r)
 			return
 		}

@@ -7,19 +7,22 @@ import (
 )
 
 //Walk recursivly calls functions on a directory
-func Walk(root string, fileFunc func(os.FileInfo), dirFunc func(os.FileInfo)) error {
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+func Walk(root string, fileFunc func(*os.File), dirFunc func(*os.File)) error {
+	return filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 		if info.IsDir() {
-			dirFunc(info)
-			return nil
+			if fd, err := os.Open(filepath.Join(path, info.Name())); err == nil {
+				dirFunc(fd)
+			}
+			return err
 		}
-		fileFunc(info)
-		return nil
+		if fd, err := os.Open(filepath.Join(path, info.Name())); err == nil {
+			fileFunc(fd)
+		}
+		return err
 	})
-	return err
 }
 
 //List splits the contents of the dir into file and dir string slices

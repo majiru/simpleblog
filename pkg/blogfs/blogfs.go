@@ -41,7 +41,8 @@ func NewBfs(path string) webfs.Webfs {
 }
 
 func (bfs *blogfs) Read(request string) (io.ReadSeeker, error) {
-	if fd, err := os.Stat(bfs.sourceDir + request); err == nil {
+	file := filepath.Join(bfs.sourceDir, request)
+	if fd, err := os.Stat(file); err == nil {
 		if fd.IsDir() {
 			request = filepath.Join(request, "/index.md")
 		}
@@ -64,11 +65,7 @@ func (bfs *blogfs) Read(request string) (io.ReadSeeker, error) {
 		return strings.NewReader(out.String()), nil
 
 	}
-
-	if fd, err := os.Open(bfs.staticDir + request); err == nil {
-		return fd, nil
-	}
-	return nil, errors.New("File not found")
+	return os.Open(file)
 }
 
 func (bfs *blogfs) openDir(path string) (pages, dirpages []page.Page, err error) {
