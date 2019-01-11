@@ -11,11 +11,14 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"aqwari.net/net/styx"
 )
 
 //Webfs defines a simple interface to be used for serving web pages
 type Webfs interface {
 	Read(requestFile string) (io.ReadSeeker, error)
+	Stat(path string) (os.FileInfo, error)
 }
 
 const domainDir = "./domains/"
@@ -62,4 +65,17 @@ func (fs Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	http.ServeContent(w, r, requestedFile, time.Now(), content)
 	return
+}
+
+func (fs Server) Serve9P(s *styx.Session){
+	for s.Next(){
+		switch msg := s.Request().(type) {
+			case styx.Topen:
+				msg.Ropen(fs.Wfs.Read(msg.Path()))
+			case styx.Twalk:
+				msg.Rwalk(fs.Wfs.Stat(msg.Path()))
+			case styx.Tstat:
+				msg.Rstat(os.Stat(msg.Path()))
+		}
+	}
 }

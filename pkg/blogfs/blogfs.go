@@ -35,9 +35,16 @@ func NewBfs(path string) webfs.Webfs {
 	if _, err := os.Stat(templ); err == nil {
 		bfs.templateFile = templ
 	}
-	os.Mkdir(path+defaultSourceDir, 0755)
-	os.Mkdir(path+defaultStaticDir, 0755)
+	os.Mkdir(source, 0755)
+	os.Mkdir(static, 0755)
 	return bfs
+}
+
+func (bfs *blogfs) Stat(path string) (os.FileInfo, error){
+	if fi, err := os.Stat(filepath.Join(bfs.sourceDir, path)); err == nil {
+		return fi, nil
+	}
+	return os.Stat(filepath.Join(bfs.staticDir, path))
 }
 
 func (bfs *blogfs) Read(request string) (io.ReadSeeker, error) {

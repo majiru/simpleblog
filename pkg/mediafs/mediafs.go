@@ -31,6 +31,11 @@ func NewMediafs(root string) webfs.Webfs {
 	return &mediafs{contentDir, templ}
 }
 
+func (mfs *mediafs) Stat(request string) (os.FileInfo, error) {
+	path := filepath.Join(mfs.root, request)
+	return os.Stat(path)
+}
+
 func (mfs *mediafs) Read(request string) (io.ReadSeeker, error) {
 	path := filepath.Join(mfs.root, request)
 	fi, err := os.Stat(path)
